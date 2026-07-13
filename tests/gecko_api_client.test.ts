@@ -154,7 +154,7 @@ describe("LangChain Integration Tools", () => {
       departureDate: "2026-08-15",
     });
 
-    expect(response).toBe(JSON.stringify([{ cia: "LATAM", preco: 700 }]));
+    expect(response).toBe(JSON.stringify([{ airline: "LATAM", price: 700, departure: "" }]));
   });
 
   test("buscarHoteisHoteisCom deve lidar com erro de rede graciosamente", async () => {
@@ -219,7 +219,9 @@ describe("LangChain Integration Tools", () => {
       address: "Ubatuba",
       startDate: "2026-08-15",
     });
-    expect(respAirbnb).toBe(JSON.stringify([{ name: "Hotel Teste", preco: 300 }]));
+    expect(respAirbnb).toBe(
+      JSON.stringify([{ name: "Hotel Teste", price: 300, rating: null, address: "" }])
+    );
 
     const respTrivago = await buscarHoteisTrivago.invoke({
       location: "Ubatuba",

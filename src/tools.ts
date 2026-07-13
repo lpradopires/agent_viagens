@@ -18,6 +18,71 @@ function getCheckoutDefault(checkinStr: string): string {
   return checkin.toISOString().split("T")[0];
 }
 
+// --- FUNÇÕES DE LIMPEZA E COMPACTAÇÃO DE TOKENS (PREVINE RATE LIMITS NO GROQ) ---
+
+function cleanFlightsData(data: any): any[] {
+  if (!data) return [];
+
+  // Se já for um array simples (como mocks dos testes)
+  if (Array.isArray(data)) {
+    return data.slice(0, 5).map((f) => ({
+      airline: f.cia || f.airline || f.airlineCode || "Voo",
+      price: f.preco || f.price || f.amount || null,
+      departure: f.departure || f.departureTime || f.date || "",
+    }));
+  }
+
+  // Se for a estrutura padrão de resposta do GeckoAPI
+  const trips = data.results?.trips || data.trips || [];
+  if (Array.isArray(trips)) {
+    return trips.slice(0, 5).map((t: any) => {
+      const segments = t.segments || [];
+      const firstSegment = segments[0] || {};
+      const lastSegment = segments[segments.length - 1] || {};
+      return {
+        airline: firstSegment.flight?.airlineCode || "Voo",
+        flightNumber: firstSegment.flight?.flightNumber || "",
+        origin: firstSegment.origin || "",
+        destination: lastSegment.destination || "",
+        departure: firstSegment.departure || "",
+        arrival: lastSegment.arrival || "",
+        price: t.cheapestOffer?.total?.amount || t.cheapestOffer?.price || null,
+        currency: t.cheapestOffer?.total?.currency || "BRL",
+        stops: segments.length - 1,
+      };
+    });
+  }
+
+  return [];
+}
+
+function cleanHotelsData(data: any): any[] {
+  if (!data) return [];
+
+  // Se já for um array simples (como mocks dos testes)
+  if (Array.isArray(data)) {
+    return data.slice(0, 5).map((h) => ({
+      name: h.name || h.title || h.nome || "Hospedagem",
+      price: h.price || h.preco || null,
+      rating: h.rating || h.avaliacao || h.score || null,
+      address: h.address || h.location || h.endereco || "",
+    }));
+  }
+
+  // Se for estrutura de objeto contendo lista de propriedades
+  const properties = data.properties || data.hotels || data.results || [];
+  if (Array.isArray(properties)) {
+    return properties.slice(0, 5).map((p: any) => ({
+      name: p.name || p.title || "",
+      price: p.price?.total?.amount || p.price?.amount || p.rate?.amount || null,
+      rating: p.rating?.score || p.rating || p.score || null,
+      address: p.address?.streetAddress || p.address || p.location || "",
+    }));
+  }
+
+  return [];
+}
+
 // --- FERRAMENTAS DE VOOS ---
 
 export const buscarVoosLatam = tool(
@@ -28,7 +93,7 @@ export const buscarVoosLatam = tool(
         to,
         departureDate,
       });
-      return JSON.stringify(results);
+      return JSON.stringify(cleanFlightsData(results));
     } catch (err: any) {
       return `Erro na busca de voos LATAM: ${err.message}`;
     }
@@ -62,7 +127,7 @@ export const buscarVoosAzul = tool(
         to,
         departureDate,
       });
-      return JSON.stringify(results);
+      return JSON.stringify(cleanFlightsData(results));
     } catch (err: any) {
       return `Erro na busca de voos Azul: ${err.message}`;
     }
@@ -96,7 +161,7 @@ export const buscarVoosGol = tool(
         to,
         departureDate,
       });
-      return JSON.stringify(results);
+      return JSON.stringify(cleanFlightsData(results));
     } catch (err: any) {
       return `Erro na busca de voos GOL: ${err.message}`;
     }
@@ -133,7 +198,7 @@ export const buscarHoteisAirbnb = tool(
         startDate,
         endDate: finalCheckout,
       });
-      return JSON.stringify(results);
+      return JSON.stringify(cleanHotelsData(results));
     } catch (err: any) {
       return `Erro na busca de hospedagens no Airbnb: ${err.message}`;
     }
@@ -170,7 +235,7 @@ export const buscarHoteisHoteisCom = tool(
         numAdults: 2,
         numRooms: 1,
       });
-      return JSON.stringify(results);
+      return JSON.stringify(cleanHotelsData(results));
     } catch (err: any) {
       return `Erro na busca de hotéis no Hoteis.com: ${err.message}`;
     }
@@ -207,7 +272,7 @@ export const buscarHoteisTrivago = tool(
         numAdults: 2,
         numRooms: 1,
       });
-      return JSON.stringify(results);
+      return JSON.stringify(cleanHotelsData(results));
     } catch (err: any) {
       return `Erro na busca de hotéis no Trivago: ${err.message}`;
     }
