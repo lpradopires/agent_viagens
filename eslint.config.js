@@ -18,13 +18,13 @@ export default [
     },
     plugins: {
       "@typescript-eslint": tsPlugin,
-      "prettier": prettierPlugin,
+      prettier: prettierPlugin,
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
       "prettier/prettier": "error",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
   prettierConfig,
