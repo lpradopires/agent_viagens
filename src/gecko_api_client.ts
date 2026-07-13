@@ -60,6 +60,9 @@ export class GeckoApiClient {
       id: Math.floor(Math.random() * 1000000),
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
+
     try {
       const response = await fetch(this.endpoint, {
         method: "POST",
@@ -68,7 +71,9 @@ export class GeckoApiClient {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Falha na requisição HTTP: ${response.status} ${response.statusText}`);
