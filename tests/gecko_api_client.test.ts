@@ -1,6 +1,12 @@
 import { expect, test, vi, beforeEach, afterEach, describe } from "vitest";
 import { GeckoApiClient } from "../src/gecko_api_client.js";
-import { buscarVoosLatam, buscarHoteisBooking } from "../src/tools.js";
+import {
+  buscarVoosLatam,
+  buscarVoosAzul,
+  buscarVoosKayak,
+  buscarHoteisBooking,
+  buscarHoteisAirbnb,
+} from "../src/tools.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -163,5 +169,55 @@ describe("LangChain Integration Tools", () => {
     });
 
     expect(response).toContain("Erro na busca de hotéis no Booking");
+  });
+
+  test("buscarVoosAzul e buscarVoosKayak devem retornar dados de voo com sucesso", async () => {
+    const mockApiResponse = {
+      jsonrpc: "2.0",
+      id: 1,
+      result: {
+        content: [{ type: "text", text: JSON.stringify([{ cia: "Azul/Kayak", preco: 800 }]) }],
+        isError: false,
+      },
+    };
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => mockApiResponse,
+    });
+
+    const respAzul = await buscarVoosAzul.invoke({
+      origin: "VCP",
+      destination: "CNF",
+      date: "2026-08-15",
+    });
+    expect(respAzul).toContain("Azul/Kayak");
+
+    const respKayak = await buscarVoosKayak.invoke({
+      origin: "SAO",
+      destination: "RIO",
+      date: "2026-08-15",
+    });
+    expect(respKayak).toContain("Azul/Kayak");
+  });
+
+  test("buscarHoteisAirbnb deve retornar dados de hotéis com sucesso", async () => {
+    const mockApiResponse = {
+      jsonrpc: "2.0",
+      id: 1,
+      result: {
+        content: [{ type: "text", text: JSON.stringify([{ name: "Airbnb Apto", preco: 300 }]) }],
+        isError: false,
+      },
+    };
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => mockApiResponse,
+    });
+
+    const response = await buscarHoteisAirbnb.invoke({
+      destination: "Ubatuba",
+      checkin: "2026-08-15",
+    });
+    expect(response).toContain("Airbnb Apto");
   });
 });
