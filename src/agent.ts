@@ -103,9 +103,47 @@ const agentNode = async (state: typeof StateAnnotation.State) => {
   const systemPrompt = getSystemPrompt();
   const messagesWithSystem = [new SystemMessage(systemPrompt), ...state.messages];
 
-  // Vincula as ferramentas de viagem ao modelo sob demanda
-  const modelWithTools = getModel().bindTools(travelTools);
-  const response = await modelWithTools.invoke(messagesWithSystem);
+  let response;
+  try {
+    const modelWithTools = getModel().bindTools(travelTools);
+    response = await modelWithTools.invoke(messagesWithSystem);
+  } catch (err: any) {
+    const errMsg = err.message || "";
+    if (
+      process.env.OPENROUTER_API_KEY &&
+      (errMsg.includes("429") ||
+        errMsg.includes("413") ||
+        errMsg.includes("rate_limit") ||
+        errMsg.includes("limit") ||
+        errMsg.includes("too large") ||
+        errMsg.includes("quota"))
+    ) {
+      console.warn(
+        "\n[Sistema]: Limite de requisições atingido na LLM primária. Acionando fallback automático via OpenRouter..."
+      );
+      try {
+        const fallbackModel = new ChatOpenAI({
+          model: "meta-llama/llama-3.3-70b-instruct:free",
+          apiKey: process.env.OPENROUTER_API_KEY,
+          configuration: {
+            baseURL: "https://openrouter.ai/api/v1",
+            defaultHeaders: {
+              "HTTP-Referer": "https://github.com/lpradopires/agent_viagens",
+              "X-Title": "Agente de Busca de Viagens",
+            },
+          },
+          temperature: 0.2,
+        }).bindTools(travelTools);
+        response = await fallbackModel.invoke(messagesWithSystem);
+      } catch (fallbackErr: any) {
+        throw new Error(
+          `Falha na LLM primária (${err.message}) e também no Fallback OpenRouter (${fallbackErr.message})`
+        );
+      }
+    } else {
+      throw err;
+    }
+  }
 
   return {
     messages: [response],
