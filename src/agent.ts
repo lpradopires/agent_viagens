@@ -39,11 +39,17 @@ export const StateAnnotation = Annotation.Root({
   }),
 });
 
-// Inicialização preguiçosa (Lazy Loading) do Modelo com suporte a múltiplos provedores (OpenRouter, Groq ou Gemini)
+// Inicialização preguiçosa (Lazy Loading) do Modelo com prioridade para o Gemini 2.5 (que tem cota ativa)
 let model: any = null;
 function getModel(): any {
   if (!model) {
-    if (process.env.OPENROUTER_API_KEY) {
+    if (process.env.GEMINI_API_KEY) {
+      model = new ChatGoogleGenerativeAI({
+        model: "gemini-2.5-flash",
+        apiKey: process.env.GEMINI_API_KEY,
+        temperature: 0.2,
+      });
+    } else if (process.env.OPENROUTER_API_KEY) {
       model = new ChatOpenAI({
         model: "meta-llama/llama-3.3-70b-instruct:free",
         apiKey: process.env.OPENROUTER_API_KEY,
@@ -62,15 +68,9 @@ function getModel(): any {
         apiKey: process.env.GROQ_API_KEY,
         temperature: 0.2,
       });
-    } else if (process.env.GEMINI_API_KEY) {
-      model = new ChatGoogleGenerativeAI({
-        model: "gemini-2.0-flash",
-        apiKey: process.env.GEMINI_API_KEY,
-        temperature: 0.2,
-      });
     } else {
       throw new Error(
-        "Nenhuma chave de API configurada. Configure GEMINI_API_KEY, GROQ_API_KEY ou OPENROUTER_API_KEY no arquivo .env."
+        "Nenhuma chave de API configurada. Configure GEMINI_API_KEY, OPENROUTER_API_KEY ou GROQ_API_KEY no arquivo .env."
       );
     }
   }
