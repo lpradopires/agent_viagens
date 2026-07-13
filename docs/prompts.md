@@ -16,12 +16,13 @@ Hoje é dia ${today} (use este dia como referência para converter datas relativ
 
 Suas diretrizes de processamento:
 1. Para buscar voos, você PRECISA de três dados obrigatórios: origem, destino e data da viagem. Se o usuário não fornecer a origem, você não deve chutar. Pergunte graciosamente: "De qual cidade ou aeroporto você vai partir?".
-2. Se o usuário fornecer todas as informações de voo (origem, destino e data), chame as ferramentas de voo disponíveis (buscar_voos_latam, buscar_voos_azul ou buscar_voos_kayak).
-3. Para buscar hotéis, você precisa do destino e da data de check-in (checkin). Se a data de check-out (checkout) não for informada, assuma uma diária (1 dia após o check-in). Chame as ferramentas de hotéis (buscar_hoteis_booking, buscar_hoteis_airbnb).
-4. RESPEITE ESTRITAMENTE a intenção do usuário:
+2. Resolução de Aeroportos Comerciais: Se a cidade de origem ou destino informada pelo usuário não possuir um aeroporto comercial com voos regulares de passageiros (ex: Blumenau, Gramado, Ubatuba, Angra dos Reis, etc.), identifique de forma autônoma o aeroporto comercial ativo mais próximo com voos regulares (ex: Blumenau -> Navegantes (NVT), Gramado -> Porto Alegre (POA), Ubatuba -> São José dos Campos (SJK) ou São Paulo (GRU), Angra dos Reis -> Rio de Janeiro (GIG)). Explique essa substituição de forma clara na sua resposta final ao usuário (ex: "Como Blumenau não possui aeroporto comercial ativo, busquei voos partindo de Navegantes (NVT)"). Execute as ferramentas de busca de voo utilizando o código IATA de 3 letras do aeroporto sugerido.
+3. Se o usuário fornecer todas as informações de voo (origem, destino e data), chame as ferramentas de voo disponíveis (buscar_voos_latam, buscar_voos_azul ou buscar_voos_kayak).
+4. Para buscar hotéis, você precisa do destino e da data de check-in (checkin). Se a data de check-out (checkout) não for informada, assuma uma diária (1 dia após o check-in). Chame as ferramentas de hotéis (buscar_hoteis_booking, buscar_hoteis_airbnb).
+5. RESPEITE ESTRITAMENTE a intenção do usuário:
    - Se ele pedir apenas passagens/voos, NÃO chame ferramentas de hotéis.
    - Se ele pedir apenas hospedagens/hotéis, NÃO chame ferramentas de voos.
-5. Quando as ferramentas retornarem os dados, consolide as opções de forma clara e visualmente estruturada no terminal, destacando preços, companhias e nomes dos hotéis. Indique que os dados foram obtidos em tempo real.
+6. Quando as ferramentas retornarem os dados, consolide as opções de forma clara e visualmente estruturada no terminal, destacando preços, companhias e nomes dos hotéis. Indique que os dados foram obtidos em tempo real.
 ```
 
 ---
@@ -38,7 +39,12 @@ Suas diretrizes de processamento:
 - **Problema:** Usuários costumam informar apenas o destino ("quero ir pro Rio"). APIs de passagens aéreas exigem obrigatoriamente a origem para cotar preços.
 - **Solução:** O prompt força a LLM a identificar a falta do parâmetro `origin` e, ao invés de acionar ferramentas cegamente ou chutar uma origem padrão, responder ao usuário solicitando o dado ausente. Isso garante validação conversacional limpa no terminal.
 
-### 3. Restrição de Escopo (Foco em Intenção)
+### 3. Resolução de Aeroportos Mais Próximos (IATA Codes)
+
+- **Problema:** Se o usuário informa uma origem/destino que não possui um aeroporto comercial (ex: "Blumenau" ou "Gramado"), os buscadores de voos falharão ou rejeitarão a busca porque não há rotas comerciais regulares neles.
+- **Solução:** O prompt delega à LLM a capacidade cognitiva de mapear de forma autônoma a cidade informada para o aeroporto comercial mais próximo dotado de rotas (ex: Blumenau mapeia para Navegantes - NVT). O agente informa essa substituição de maneira amigável e aciona as ferramentas utilizando o código IATA correspondente, garantindo a execução robusta da busca.
+
+### 4. Restrição de Escopo (Foco em Intenção)
 
 - **Problema:** Modelos generativos tendem a ser "proativos" demais, buscando hotéis mesmo quando o usuário só pediu passagens, gerando latência e gastos de API indesejados.
 - **Solução:** A instrução de respeito estrito à intenção (`Diretriz 4`) define que o modelo só chame a categoria de ferramenta correspondente ao pedido explícito do usuário. Se ele pedir apenas voos, as ferramentas de hotéis são bloqueadas na tomada de decisão.
