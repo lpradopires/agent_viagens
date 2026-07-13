@@ -229,4 +229,35 @@ describe("LangChain Integration Tools", () => {
     });
     expect(respTrivago).toContain("Hotel Teste");
   });
+
+  test("deve retornar erro de validação local se a data estiver no passado ou parâmetros inválidos", async () => {
+    // 1. Voos com data no passado
+    const respVooPassado = await buscarVoosLatam.invoke({
+      from: "GRU",
+      to: "SDU",
+      departureDate: "2020-01-01",
+    });
+    expect(respVooPassado).toContain(
+      "Erro de validação: A data de partida (2020-01-01) está no passado"
+    );
+
+    // 2. Voos com origem e destino idênticos
+    const respVooIdentico = await buscarVoosLatam.invoke({
+      from: "GRU",
+      to: "GRU",
+      departureDate: "2026-08-15",
+    });
+    expect(respVooIdentico).toContain(
+      "Erro de validação: O aeroporto de origem (GRU) não pode ser idêntico ao de destino (GRU)"
+    );
+
+    // 3. Hotéis com data no passado
+    const respHotelPassado = await buscarHoteisHoteisCom.invoke({
+      location: "Gramado",
+      checkinDate: "2020-01-01",
+    });
+    expect(respHotelPassado).toContain(
+      "Erro de validação: A data de check-in (2020-01-01) está no passado"
+    );
+  });
 });

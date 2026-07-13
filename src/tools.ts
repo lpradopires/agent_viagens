@@ -18,12 +18,11 @@ function getCheckoutDefault(checkinStr: string): string {
   return checkin.toISOString().split("T")[0];
 }
 
-// --- FUNÇÕES DE LIMPEZA E COMPACTAÇÃO DE TOKENS (PREVINE RATE LIMITS NO GROQ) ---
+// --- FUNÇÕES DE LIMPEZA E COMPACTAÇÃO DE TOKENS ---
 
 function cleanFlightsData(data: any): any[] {
   if (!data) return [];
 
-  // Se já for um array simples (como mocks dos testes)
   if (Array.isArray(data)) {
     return data.slice(0, 5).map((f) => ({
       airline: f.cia || f.airline || f.airlineCode || "Voo",
@@ -32,7 +31,6 @@ function cleanFlightsData(data: any): any[] {
     }));
   }
 
-  // Se for a estrutura padrão de resposta do GeckoAPI
   const trips = data.results?.trips || data.trips || [];
   if (Array.isArray(trips)) {
     return trips.slice(0, 5).map((t: any) => {
@@ -59,7 +57,6 @@ function cleanFlightsData(data: any): any[] {
 function cleanHotelsData(data: any): any[] {
   if (!data) return [];
 
-  // Se já for um array simples (como mocks dos testes)
   if (Array.isArray(data)) {
     return data.slice(0, 5).map((h) => ({
       name: h.name || h.title || h.nome || "Hospedagem",
@@ -69,7 +66,6 @@ function cleanHotelsData(data: any): any[] {
     }));
   }
 
-  // Se for estrutura de objeto contendo lista de propriedades
   const properties = data.properties || data.hotels || data.results || [];
   if (Array.isArray(properties)) {
     return properties.slice(0, 5).map((p: any) => ({
@@ -87,6 +83,14 @@ function cleanHotelsData(data: any): any[] {
 
 export const buscarVoosLatam = tool(
   async ({ from, to, departureDate }) => {
+    const today = new Date().toISOString().split("T")[0];
+    if (departureDate < today) {
+      return `Erro de validação: A data de partida (${departureDate}) está no passado. Hoje é ${today}. Por favor, informe uma data futura.`;
+    }
+    if (from.toUpperCase() === to.toUpperCase()) {
+      return `Erro de validação: O aeroporto de origem (${from}) não pode ser idêntico ao de destino (${to}).`;
+    }
+
     try {
       const results = await getClient().callTool("latamairlines_com_plp", {
         from,
@@ -121,6 +125,14 @@ export const buscarVoosLatam = tool(
 
 export const buscarVoosAzul = tool(
   async ({ from, to, departureDate }) => {
+    const today = new Date().toISOString().split("T")[0];
+    if (departureDate < today) {
+      return `Erro de validação: A data de partida (${departureDate}) está no passado. Hoje é ${today}. Por favor, informe uma data futura.`;
+    }
+    if (from.toUpperCase() === to.toUpperCase()) {
+      return `Erro de validação: O aeroporto de origem (${from}) não pode ser idêntico ao de destino (${to}).`;
+    }
+
     try {
       const results = await getClient().callTool("voeazul_com_br_plp", {
         from,
@@ -155,6 +167,14 @@ export const buscarVoosAzul = tool(
 
 export const buscarVoosGol = tool(
   async ({ from, to, departureDate }) => {
+    const today = new Date().toISOString().split("T")[0];
+    if (departureDate < today) {
+      return `Erro de validação: A data de partida (${departureDate}) está no passado. Hoje é ${today}. Por favor, informe uma data futura.`;
+    }
+    if (from.toUpperCase() === to.toUpperCase()) {
+      return `Erro de validação: O aeroporto de origem (${from}) não pode ser idêntico ao de destino (${to}).`;
+    }
+
     try {
       const results = await getClient().callTool("voegol_com_br_plp", {
         from,
@@ -191,7 +211,18 @@ export const buscarVoosGol = tool(
 
 export const buscarHoteisAirbnb = tool(
   async ({ address, startDate, endDate }) => {
+    const today = new Date().toISOString().split("T")[0];
+    if (startDate < today) {
+      return `Erro de validação: A data de check-in (${startDate}) está no passado. Hoje é ${today}. Por favor, informe uma data futura.`;
+    }
     const finalCheckout = endDate || getCheckoutDefault(startDate);
+    if (finalCheckout < startDate) {
+      return `Erro de validação: A data de check-out (${finalCheckout}) deve ser posterior à data de check-in (${startDate}).`;
+    }
+    if (!address || address.trim().length < 2) {
+      return `Erro de validação: O local de destino deve ser informado.`;
+    }
+
     try {
       const results = await getClient().callTool("airbnb_com_br_plp", {
         address,
@@ -226,7 +257,18 @@ export const buscarHoteisAirbnb = tool(
 
 export const buscarHoteisHoteisCom = tool(
   async ({ location, checkinDate, checkoutDate }) => {
+    const today = new Date().toISOString().split("T")[0];
+    if (checkinDate < today) {
+      return `Erro de validação: A data de check-in (${checkinDate}) está no passado. Hoje é ${today}. Por favor, informe uma data futura.`;
+    }
     const finalCheckout = checkoutDate || getCheckoutDefault(checkinDate);
+    if (finalCheckout < checkinDate) {
+      return `Erro de validação: A data de check-out (${finalCheckout}) deve ser posterior à data de check-in (${checkinDate}).`;
+    }
+    if (!location || location.trim().length < 2) {
+      return `Erro de validação: A localização de destino deve ser informada.`;
+    }
+
     try {
       const results = await getClient().callTool("hoteis_com_plp", {
         location,
@@ -263,7 +305,18 @@ export const buscarHoteisHoteisCom = tool(
 
 export const buscarHoteisTrivago = tool(
   async ({ location, checkinDate, checkoutDate }) => {
+    const today = new Date().toISOString().split("T")[0];
+    if (checkinDate < today) {
+      return `Erro de validação: A data de check-in (${checkinDate}) está no passado. Hoje é ${today}. Por favor, informe uma data futura.`;
+    }
     const finalCheckout = checkoutDate || getCheckoutDefault(checkinDate);
+    if (finalCheckout < checkinDate) {
+      return `Erro de validação: A data de check-out (${finalCheckout}) deve ser posterior à data de check-in (${checkinDate}).`;
+    }
+    if (!location || location.trim().length < 2) {
+      return `Erro de validação: A localização de destino deve ser informada.`;
+    }
+
     try {
       const results = await getClient().callTool("trivago_com_br_plp", {
         location,
