@@ -44,7 +44,7 @@ function getModel(): any {
   if (!model) {
     if (process.env.GROQ_API_KEY) {
       model = new ChatGroq({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant",
         apiKey: process.env.GROQ_API_KEY,
         temperature: 0.2,
       });
@@ -96,6 +96,38 @@ const agentNode = async (state: typeof StateAnnotation.State) => {
   };
 };
 
+// Função recursiva para limpar objetos e economizar consumo de tokens nas mensagens de ferramentas
+function cleanObject(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(cleanObject);
+  }
+  if (obj !== null && typeof obj === "object") {
+    const cleaned: Record<string, any> = {};
+    for (const key of Object.keys(obj)) {
+      const lowerKey = key.toLowerCase();
+      // Ignora chaves com conteúdo longo ou irrelevante
+      if (
+        lowerKey.includes("url") ||
+        lowerKey.includes("image") ||
+        lowerKey.includes("photo") ||
+        lowerKey.includes("description") ||
+        lowerKey.includes("descri") ||
+        lowerKey.includes("detail") ||
+        lowerKey.includes("detalhe") ||
+        lowerKey.includes("html") ||
+        lowerKey.includes("logo") ||
+        lowerKey.includes("svg") ||
+        lowerKey.includes("link")
+      ) {
+        continue;
+      }
+      cleaned[key] = cleanObject(obj[key]);
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 // Nó de Filtragem de Dados (Token Reducer)
 const filterDataNode = (state: typeof StateAnnotation.State) => {
   const flightResults: any[] = [];
@@ -109,7 +141,10 @@ const filterDataNode = (state: typeof StateAnnotation.State) => {
         const parsed = JSON.parse(msg.content);
         if (Array.isArray(parsed)) {
           // Filtra apenas os top 3 melhores resultados
-          const cleaned = parsed.slice(0, 3);
+          const topResults = parsed.slice(0, 3);
+
+          // Limpa recursivamente chaves longas e inúteis (URLs, imagens, descrições)
+          const cleaned = cleanObject(topResults);
 
           if (msg.name?.includes("voos")) {
             flightResults.push(...cleaned);
