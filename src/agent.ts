@@ -2,6 +2,7 @@ import { Annotation, StateGraph, END, START, MemorySaver } from "@langchain/lang
 import { BaseMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatGroq } from "@langchain/groq";
+import { ChatOpenAI } from "@langchain/openai";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { travelTools } from "./tools.js";
 import dotenv from "dotenv";
@@ -38,11 +39,24 @@ export const StateAnnotation = Annotation.Root({
   }),
 });
 
-// Inicialização preguiçosa (Lazy Loading) do Modelo com suporte a múltiplos provedores (Groq ou Gemini)
+// Inicialização preguiçosa (Lazy Loading) do Modelo com suporte a múltiplos provedores (OpenRouter, Groq ou Gemini)
 let model: any = null;
 function getModel(): any {
   if (!model) {
-    if (process.env.GROQ_API_KEY) {
+    if (process.env.OPENROUTER_API_KEY) {
+      model = new ChatOpenAI({
+        model: "meta-llama/llama-3-8b-instruct:free",
+        apiKey: process.env.OPENROUTER_API_KEY,
+        configuration: {
+          baseURL: "https://openrouter.ai/api/v1",
+          defaultHeaders: {
+            "HTTP-Referer": "https://github.com/lpradopires/agent_viagens",
+            "X-Title": "Agente de Busca de Viagens",
+          },
+        },
+        temperature: 0.2,
+      });
+    } else if (process.env.GROQ_API_KEY) {
       model = new ChatGroq({
         model: "llama-3.1-8b-instant",
         apiKey: process.env.GROQ_API_KEY,
@@ -56,7 +70,7 @@ function getModel(): any {
       });
     } else {
       throw new Error(
-        "Nenhuma chave de API configurada. Configure GEMINI_API_KEY ou GROQ_API_KEY no arquivo .env."
+        "Nenhuma chave de API configurada. Configure GEMINI_API_KEY, GROQ_API_KEY ou OPENROUTER_API_KEY no arquivo .env."
       );
     }
   }
