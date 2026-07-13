@@ -64,3 +64,15 @@ Este documento acompanha o progresso de desenvolvimento do **Agente de Busca de 
 - **Prompts:** Criado o arquivo [docs/prompts.md](file:///Users/leandropradopires/Projetos/mini_projeto/docs/prompts.md) detalhando as diretrizes e injeções dinâmicas de data.
 - **Slides:** Criado o arquivo [docs/apresentacao_slides.md](file:///Users/leandropradopires/Projetos/mini_projeto/docs/apresentacao_slides.md) contendo os 2 slides exigidos.
 - **Segurança:** Arquivo [.env.example](file:///Users/leandropradopires/Projetos/mini_projeto/.env.example) atualizado para incluir `OPENROUTER_API_KEY` e `GROQ_API_KEY`.
+
+---
+
+## 🛠️ Tarefa 8 Concluída: Correção de Parâmetros, Resolução de Aeroportos, Limitação de Provedores e Timeout de Segurança
+
+- **Ajuste de Parâmetros (GeckoAPI):** Corrigidos os schemas do Zod em [src/tools.ts](file:///Users/leandropradopires/Projetos/mini_projeto/src/tools.ts) e seus mapeamentos correspondentes de modo a enviar as chaves exigidas pela API da Gecko (como `from`/`to`/`departureDate` para voos; `location` para Trivago e Hoteis.com; e `address`/`startDate`/`endDate` para o Airbnb), eliminando os erros RPC (`Tool not found` e Zod validation mismatches).
+- **Mapeamento de Provedores Específicos:** Reestruturamos as 6 ferramentas de busca disponíveis:
+  - **Voos:** Limitado às companhias GOL (`voegol_com_br_plp`), LATAM (`latamairlines_com_plp`) e Azul (`voeazul_com_br_plp`).
+  - **Hotéis:** Limitado aos portais Airbnb (`airbnb_com_br_plp`), Hoteis.com (`hoteis_com_plp`) e Trivago (`trivago_com_br_plp`).
+- **Resolução Automática de Aeroportos Comerciais (Pre-condição):** Inserida instrução cognitiva no prompt do sistema em [src/agent.ts](file:///Users/leandropradopires/Projetos/mini_projeto/src/agent.ts) para que a LLM identifique cidades de origem/destino sem aeroporto comercial comercial ativo (ex: Blumenau, Gramado, Ubatuba) e faça a resolução autônoma para o aeroporto comercial mais próximo (ex: Blumenau -> Navegantes (NVT)), avisando o usuário na resposta e prevenindo falhas de busca.
+- **Timeout de Rede:** Adicionado um `AbortController` com timeout de 35 segundos para as chamadas de rede no [src/gecko_api_client.ts](file:///Users/leandropradopires/Projetos/mini_projeto/src/gecko_api_client.ts) para evitar travamento da CLI caso algum portal de terceiros demore a responder.
+- **Manutenção de Testes:** Atualizadas as suítes de testes unitários e de integração nos arquivos [tests/gecko_api_client.test.ts](file:///Users/leandropradopires/Projetos/mini_projeto/tests/gecko_api_client.test.ts) e [tests/agent.test.ts](file:///Users/leandropradopires/Projetos/mini_projeto/tests/agent.test.ts) para alinhar com os novos provedores e schemas, mantendo a cobertura acima de 90% e todos os 13 testes passando.
