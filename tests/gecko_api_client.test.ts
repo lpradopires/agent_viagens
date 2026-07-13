@@ -148,9 +148,9 @@ describe("LangChain Integration Tools", () => {
     });
 
     const response = await buscarVoosLatam.invoke({
-      origin: "GRU",
-      destination: "SDU",
-      date: "2026-08-15",
+      from: "GRU",
+      to: "SDU",
+      departureDate: "2026-08-15",
     });
 
     expect(response).toBe(JSON.stringify([{ cia: "LATAM", preco: 700 }]));
@@ -164,8 +164,8 @@ describe("LangChain Integration Tools", () => {
     });
 
     const response = await buscarHoteisBooking.invoke({
-      destination: "Gramado",
-      checkin: "2026-08-15",
+      keyword: "Gramado",
+      checkinDate: "2026-08-15",
     });
 
     expect(response).toContain("Erro na busca de hotéis no Booking");
@@ -186,16 +186,16 @@ describe("LangChain Integration Tools", () => {
     });
 
     const respAzul = await buscarVoosAzul.invoke({
-      origin: "VCP",
-      destination: "CNF",
-      date: "2026-08-15",
+      from: "VCP",
+      to: "CNF",
+      departureDate: "2026-08-15",
     });
     expect(respAzul).toContain("Azul/Kayak");
 
     const respKayak = await buscarVoosKayak.invoke({
-      origin: "SAO",
-      destination: "RIO",
-      date: "2026-08-15",
+      from: "SAO",
+      to: "RIO",
+      departureDate: "2026-08-15",
     });
     expect(respKayak).toContain("Azul/Kayak");
   });
@@ -215,9 +215,9 @@ describe("LangChain Integration Tools", () => {
     });
 
     const response = await buscarHoteisAirbnb.invoke({
-      destination: "Ubatuba",
-      checkin: "2026-08-15",
+      address: "Ubatuba",
+      startDate: "2026-08-15",
     });
-    expect(response).toContain("Airbnb Apto");
+    expect(response).toBe(JSON.stringify([{ name: "Airbnb Apto", preco: 300 }]));
   });
 });

@@ -2,6 +2,7 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { GeckoApiClient } from "./gecko_api_client.js";
 
+// Instanciação preguiçosa para evitar acionamentos prematuros
 let client: GeckoApiClient | null = null;
 function getClient(): GeckoApiClient {
   if (!client) {
@@ -10,30 +11,22 @@ function getClient(): GeckoApiClient {
   return client;
 }
 
-/**
- * Utilitário para formatar a data de check-out caso não seja enviada.
- * Adiciona 1 dia por padrão à data de check-in.
- */
-function getCheckoutDefault(checkin: string): string {
-  try {
-    const date = new Date(checkin + "T12:00:00");
-    date.setDate(date.getDate() + 1);
-    return date.toISOString().split("T")[0];
-  } catch {
-    return checkin;
-  }
+// Helper para calcular data padrão de checkout se não fornecida
+function getCheckoutDefault(checkinStr: string): string {
+  const checkin = new Date(checkinStr + "T12:00:00");
+  checkin.setDate(checkin.getDate() + 1);
+  return checkin.toISOString().split("T")[0];
 }
 
 // --- FERRAMENTAS DE VOOS ---
 
 export const buscarVoosLatam = tool(
-  async ({ origin, destination, date }) => {
+  async ({ from, to, departureDate }) => {
     try {
       const results = await getClient().callTool("latamairlines_com_plp", {
-        keyword: `voos de ${origin} para ${destination} em ${date}`,
-        origin,
-        destination,
-        date,
+        from,
+        to,
+        departureDate,
       });
       return JSON.stringify(results);
     } catch (err: any) {
@@ -43,28 +36,31 @@ export const buscarVoosLatam = tool(
   {
     name: "buscar_voos_latam",
     description:
-      "Busca passagens aéreas na LATAM Airlines. Requer origem (ex: GRU, Sao Paulo), destino (ex: SDU, Rio de Janeiro) e data de partida (YYYY-MM-DD).",
+      "Busca passagens aéreas na LATAM Airlines. Requer origem (código IATA com 3 letras, ex: GRU), destino (código IATA com 3 letras, ex: SDU) e data de partida (YYYY-MM-DD).",
     schema: z.object({
-      origin: z.string().describe("Cidade ou aeroporto de origem (ex: GRU, SAO, Sao Paulo)"),
-      destination: z
+      from: z
         .string()
-        .describe("Cidade ou aeroporto de destino (ex: SDU, RIO, Rio de Janeiro)"),
-      date: z
+        .length(3)
+        .describe("Código IATA de 3 letras do aeroporto de origem (ex: GRU, CGH)"),
+      to: z
+        .string()
+        .length(3)
+        .describe("Código IATA de 3 letras do aeroporto de destino (ex: SDU, GIG)"),
+      departureDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .describe("Data da viagem de partida (YYYY-MM-DD)"),
+        .describe("Data de partida (YYYY-MM-DD)"),
     }),
   }
 );
 
 export const buscarVoosAzul = tool(
-  async ({ origin, destination, date }) => {
+  async ({ from, to, departureDate }) => {
     try {
       const results = await getClient().callTool("voeazul_com_br_plp", {
-        keyword: `voos de ${origin} para ${destination} em ${date}`,
-        origin,
-        destination,
-        date,
+        from,
+        to,
+        departureDate,
       });
       return JSON.stringify(results);
     } catch (err: any) {
@@ -74,43 +70,54 @@ export const buscarVoosAzul = tool(
   {
     name: "buscar_voos_azul",
     description:
-      "Busca passagens aéreas na Azul Linhas Aéreas. Requer origem (ex: VCP, Campinas), destino (ex: CNF, Belo Horizonte) e data de partida (YYYY-MM-DD).",
+      "Busca passagens aéreas na Azul Linhas Aéreas. Requer origem (código IATA com 3 letras, ex: VCP), destino (código IATA com 3 letras, ex: CNF) e data de partida (YYYY-MM-DD).",
     schema: z.object({
-      origin: z.string().describe("Cidade ou aeroporto de origem (ex: VCP, Sao Paulo)"),
-      destination: z.string().describe("Cidade ou aeroporto de destino (ex: CNF, Rio de Janeiro)"),
-      date: z
+      from: z
+        .string()
+        .length(3)
+        .describe("Código IATA de 3 letras do aeroporto de origem (ex: VCP, GRU)"),
+      to: z
+        .string()
+        .length(3)
+        .describe("Código IATA de 3 letras do aeroporto de destino (ex: CNF, SDU)"),
+      departureDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .describe("Data da viagem de partida (YYYY-MM-DD)"),
+        .describe("Data de partida (YYYY-MM-DD)"),
     }),
   }
 );
 
 export const buscarVoosKayak = tool(
-  async ({ origin, destination, date }) => {
+  async ({ from, to, departureDate }) => {
     try {
       const results = await getClient().callTool("kayak_com_br_plp", {
-        keyword: `voos de ${origin} para ${destination} em ${date}`,
-        origin,
-        destination,
-        date,
+        from,
+        to,
+        departureDate,
       });
       return JSON.stringify(results);
     } catch (err: any) {
-      return `Erro na busca de voos Kayak: ${err.message}`;
+      return `Erro na busca de voos no Kayak: ${err.message}`;
     }
   },
   {
     name: "buscar_voos_kayak",
     description:
-      "Busca passagens aéreas e ofertas no portal Kayak. Requer origem, destino e data de partida (YYYY-MM-DD). Use como ferramenta ampla de busca de voos.",
+      "Busca e compara passagens aéreas no portal Kayak. Requer origem (código IATA com 3 letras, ex: GRU), destino (código IATA com 3 letras, ex: SDU) e data de partida (YYYY-MM-DD).",
     schema: z.object({
-      origin: z.string().describe("Cidade ou aeroporto de origem (ex: SAO, GRU)"),
-      destination: z.string().describe("Cidade ou aeroporto de destino (ex: RIO, SDU)"),
-      date: z
+      from: z
+        .string()
+        .length(3)
+        .describe("Código IATA de 3 letras do aeroporto de origem (ex: GRU)"),
+      to: z
+        .string()
+        .length(3)
+        .describe("Código IATA de 3 letras do aeroporto de destino (ex: SDU)"),
+      departureDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .describe("Data da viagem de partida (YYYY-MM-DD)"),
+        .describe("Data de partida (YYYY-MM-DD)"),
     }),
   }
 );
@@ -118,13 +125,13 @@ export const buscarVoosKayak = tool(
 // --- FERRAMENTAS DE HOTÉIS ---
 
 export const buscarHoteisBooking = tool(
-  async ({ destination, checkin, checkout }) => {
-    const finalCheckout = checkout || getCheckoutDefault(checkin);
+  async ({ keyword, checkinDate, checkoutDate }) => {
+    const finalCheckout = checkoutDate || getCheckoutDefault(checkinDate);
     try {
       const results = await getClient().callTool("booking_com_br_plp", {
-        keyword: destination,
-        checkin,
-        checkout: finalCheckout,
+        keyword,
+        checkinDate,
+        checkoutDate: finalCheckout,
       });
       return JSON.stringify(results);
     } catch (err: any) {
@@ -134,32 +141,32 @@ export const buscarHoteisBooking = tool(
   {
     name: "buscar_hoteis_booking",
     description:
-      "Busca opções de hotéis e hospedagens na Booking.com. Requer a cidade de destino (ex: Gramado), data de check-in (YYYY-MM-DD) e data opcional de check-out (YYYY-MM-DD).",
+      "Busca opções de hotéis e hospedagens na Booking.com. Requer a cidade/local de destino (ex: Gramado), data de check-in (YYYY-MM-DD) e data de check-out (YYYY-MM-DD).",
     schema: z.object({
-      destination: z
+      keyword: z
         .string()
         .describe("Cidade ou local de destino para hospedagem (ex: Gramado, Rio de Janeiro)"),
-      checkin: z
+      checkinDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .describe("Data de entrada / check-in (YYYY-MM-DD)"),
-      checkout: z
+        .describe("Data de check-in (YYYY-MM-DD)"),
+      checkoutDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
         .optional()
-        .describe("Data de saída / check-out (YYYY-MM-DD)"),
+        .describe("Data de check-out (YYYY-MM-DD)"),
     }),
   }
 );
 
 export const buscarHoteisAirbnb = tool(
-  async ({ destination, checkin, checkout }) => {
-    const finalCheckout = checkout || getCheckoutDefault(checkin);
+  async ({ address, startDate, endDate }) => {
+    const finalCheckout = endDate || getCheckoutDefault(startDate);
     try {
       const results = await getClient().callTool("airbnb_com_br_plp", {
-        keyword: destination,
-        checkin,
-        checkout: finalCheckout,
+        address,
+        startDate,
+        endDate: finalCheckout,
       });
       return JSON.stringify(results);
     } catch (err: any) {
@@ -169,20 +176,20 @@ export const buscarHoteisAirbnb = tool(
   {
     name: "buscar_hoteis_airbnb",
     description:
-      "Busca casas, apartamentos e quartos de temporada no Airbnb. Requer cidade de destino (ex: Ubatuba), data de check-in (YYYY-MM-DD) e data opcional de check-out (YYYY-MM-DD).",
+      "Busca casas, apartamentos e quartos de temporada no Airbnb. Requer cidade/local de destino (ex: Ubatuba), data de check-in (YYYY-MM-DD) e data de check-out (YYYY-MM-DD).",
     schema: z.object({
-      destination: z
+      address: z
         .string()
-        .describe("Cidade ou local de destino para hospedagem (ex: Florianopolis)"),
-      checkin: z
+        .describe("Cidade ou local de destino para hospedagem (ex: Ubatuba, Florianopolis)"),
+      startDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .describe("Data de entrada / check-in (YYYY-MM-DD)"),
-      checkout: z
+        .describe("Data de check-in (YYYY-MM-DD)"),
+      endDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
         .optional()
-        .describe("Data de saída / check-out (YYYY-MM-DD)"),
+        .describe("Data de check-out (YYYY-MM-DD)"),
     }),
   }
 );

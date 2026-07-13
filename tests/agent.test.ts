@@ -68,13 +68,13 @@ describe("LangGraph Agent Engine", () => {
       json: async () => mockApiResponse,
     });
 
-    // Configura a LLM para retornar chamada de ferramenta no primeiro turno
+    // Configura a LLM para retornar as chamadas de ferramenta no primeiro turno
     const toolCallResponse = new AIMessage({
       content: "",
       tool_calls: [
         {
           name: "buscar_hoteis_booking",
-          args: { destination: "Rio de Janeiro", checkin: "2026-08-15" },
+          args: { keyword: "Rio de Janeiro", checkinDate: "2026-08-15" },
           id: "call_1",
           type: "tool_call",
         },
