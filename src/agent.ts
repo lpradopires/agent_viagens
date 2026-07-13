@@ -1,6 +1,7 @@
 import { Annotation, StateGraph, END, START, MemorySaver } from "@langchain/langgraph";
 import { BaseMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { travelTools } from "./tools.js";
 import dotenv from "dotenv";
@@ -37,20 +38,27 @@ export const StateAnnotation = Annotation.Root({
   }),
 });
 
-// Inicialização preguiçosa (Lazy Loading) do Modelo para evitar efeitos colaterais de importação em testes
-let model: ChatGoogleGenerativeAI | null = null;
-function getModel(): ChatGoogleGenerativeAI {
+// Inicialização preguiçosa (Lazy Loading) do Modelo com suporte a múltiplos provedores (Groq ou Gemini)
+let model: any = null;
+function getModel(): any {
   if (!model) {
-    if (!process.env.GEMINI_API_KEY) {
+    if (process.env.GROQ_API_KEY) {
+      model = new ChatGroq({
+        model: "llama-3.3-70b-versatile",
+        apiKey: process.env.GROQ_API_KEY,
+        temperature: 0.2,
+      });
+    } else if (process.env.GEMINI_API_KEY) {
+      model = new ChatGoogleGenerativeAI({
+        model: "gemini-2.0-flash",
+        apiKey: process.env.GEMINI_API_KEY,
+        temperature: 0.2,
+      });
+    } else {
       throw new Error(
-        "A variável de ambiente GEMINI_API_KEY não foi configurada. Verifique o seu arquivo .env."
+        "Nenhuma chave de API configurada. Configure GEMINI_API_KEY ou GROQ_API_KEY no arquivo .env."
       );
     }
-    model = new ChatGoogleGenerativeAI({
-      model: "gemini-2.0-flash",
-      apiKey: process.env.GEMINI_API_KEY,
-      temperature: 0.2,
-    });
   }
   return model;
 }
