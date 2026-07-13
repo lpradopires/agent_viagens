@@ -3,9 +3,10 @@ import { GeckoApiClient } from "../src/gecko_api_client.js";
 import {
   buscarVoosLatam,
   buscarVoosAzul,
-  buscarVoosKayak,
-  buscarHoteisBooking,
+  buscarVoosGol,
   buscarHoteisAirbnb,
+  buscarHoteisHoteisCom,
+  buscarHoteisTrivago,
 } from "../src/tools.js";
 
 const originalFetch = globalThis.fetch;
@@ -156,27 +157,27 @@ describe("LangChain Integration Tools", () => {
     expect(response).toBe(JSON.stringify([{ cia: "LATAM", preco: 700 }]));
   });
 
-  test("buscarHoteisBooking deve lidar com erro de rede graciosamente", async () => {
+  test("buscarHoteisHoteisCom deve lidar com erro de rede graciosamente", async () => {
     (globalThis.fetch as any).mockResolvedValue({
       ok: false,
       status: 403,
       statusText: "Forbidden",
     });
 
-    const response = await buscarHoteisBooking.invoke({
-      keyword: "Gramado",
+    const response = await buscarHoteisHoteisCom.invoke({
+      location: "Gramado",
       checkinDate: "2026-08-15",
     });
 
-    expect(response).toContain("Erro na busca de hotéis no Booking");
+    expect(response).toContain("Erro na busca de hotéis no Hoteis.com");
   });
 
-  test("buscarVoosAzul e buscarVoosKayak devem retornar dados de voo com sucesso", async () => {
+  test("buscarVoosAzul e buscarVoosGol devem retornar dados de voo com sucesso", async () => {
     const mockApiResponse = {
       jsonrpc: "2.0",
       id: 1,
       result: {
-        content: [{ type: "text", text: JSON.stringify([{ cia: "Azul/Kayak", preco: 800 }]) }],
+        content: [{ type: "text", text: JSON.stringify([{ cia: "Azul/GOL", preco: 800 }]) }],
         isError: false,
       },
     };
@@ -190,22 +191,22 @@ describe("LangChain Integration Tools", () => {
       to: "CNF",
       departureDate: "2026-08-15",
     });
-    expect(respAzul).toContain("Azul/Kayak");
+    expect(respAzul).toContain("Azul/GOL");
 
-    const respKayak = await buscarVoosKayak.invoke({
+    const respGol = await buscarVoosGol.invoke({
       from: "SAO",
       to: "RIO",
       departureDate: "2026-08-15",
     });
-    expect(respKayak).toContain("Azul/Kayak");
+    expect(respGol).toContain("Azul/GOL");
   });
 
-  test("buscarHoteisAirbnb deve retornar dados de hotéis com sucesso", async () => {
+  test("buscarHoteisAirbnb e buscarHoteisTrivago devem retornar dados com sucesso", async () => {
     const mockApiResponse = {
       jsonrpc: "2.0",
       id: 1,
       result: {
-        content: [{ type: "text", text: JSON.stringify([{ name: "Airbnb Apto", preco: 300 }]) }],
+        content: [{ type: "text", text: JSON.stringify([{ name: "Hotel Teste", preco: 300 }]) }],
         isError: false,
       },
     };
@@ -214,10 +215,16 @@ describe("LangChain Integration Tools", () => {
       json: async () => mockApiResponse,
     });
 
-    const response = await buscarHoteisAirbnb.invoke({
+    const respAirbnb = await buscarHoteisAirbnb.invoke({
       address: "Ubatuba",
       startDate: "2026-08-15",
     });
-    expect(response).toBe(JSON.stringify([{ name: "Airbnb Apto", preco: 300 }]));
+    expect(respAirbnb).toBe(JSON.stringify([{ name: "Hotel Teste", preco: 300 }]));
+
+    const respTrivago = await buscarHoteisTrivago.invoke({
+      location: "Ubatuba",
+      checkinDate: "2026-08-15",
+    });
+    expect(respTrivago).toContain("Hotel Teste");
   });
 });

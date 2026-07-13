@@ -73,8 +73,8 @@ describe("LangGraph Agent Engine", () => {
       content: "",
       tool_calls: [
         {
-          name: "buscar_hoteis_booking",
-          args: { keyword: "Rio de Janeiro", checkinDate: "2026-08-15" },
+          name: "buscar_hoteis_hoteis_com",
+          args: { location: "Rio de Janeiro", checkinDate: "2026-08-15" },
           id: "call_1",
           type: "tool_call",
         },

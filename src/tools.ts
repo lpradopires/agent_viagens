@@ -88,23 +88,23 @@ export const buscarVoosAzul = tool(
   }
 );
 
-export const buscarVoosKayak = tool(
+export const buscarVoosGol = tool(
   async ({ from, to, departureDate }) => {
     try {
-      const results = await getClient().callTool("kayak_com_br_plp", {
+      const results = await getClient().callTool("voegol_com_br_plp", {
         from,
         to,
         departureDate,
       });
       return JSON.stringify(results);
     } catch (err: any) {
-      return `Erro na busca de voos no Kayak: ${err.message}`;
+      return `Erro na busca de voos GOL: ${err.message}`;
     }
   },
   {
-    name: "buscar_voos_kayak",
+    name: "buscar_voos_gol",
     description:
-      "Busca e compara passagens aéreas no portal Kayak. Requer origem (código IATA com 3 letras, ex: GRU), destino (código IATA com 3 letras, ex: SDU) e data de partida (YYYY-MM-DD).",
+      "Busca passagens aéreas na GOL Linhas Aéreas. Requer origem (código IATA com 3 letras, ex: GRU), destino (código IATA com 3 letras, ex: SDU) e data de partida (YYYY-MM-DD).",
     schema: z.object({
       from: z
         .string()
@@ -123,41 +123,6 @@ export const buscarVoosKayak = tool(
 );
 
 // --- FERRAMENTAS DE HOTÉIS ---
-
-export const buscarHoteisBooking = tool(
-  async ({ keyword, checkinDate, checkoutDate }) => {
-    const finalCheckout = checkoutDate || getCheckoutDefault(checkinDate);
-    try {
-      const results = await getClient().callTool("booking_com_br_plp", {
-        keyword,
-        checkinDate,
-        checkoutDate: finalCheckout,
-      });
-      return JSON.stringify(results);
-    } catch (err: any) {
-      return `Erro na busca de hotéis no Booking: ${err.message}`;
-    }
-  },
-  {
-    name: "buscar_hoteis_booking",
-    description:
-      "Busca opções de hotéis e hospedagens na Booking.com. Requer a cidade/local de destino (ex: Gramado), data de check-in (YYYY-MM-DD) e data de check-out (YYYY-MM-DD).",
-    schema: z.object({
-      keyword: z
-        .string()
-        .describe("Cidade ou local de destino para hospedagem (ex: Gramado, Rio de Janeiro)"),
-      checkinDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .describe("Data de check-in (YYYY-MM-DD)"),
-      checkoutDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional()
-        .describe("Data de check-out (YYYY-MM-DD)"),
-    }),
-  }
-);
 
 export const buscarHoteisAirbnb = tool(
   async ({ address, startDate, endDate }) => {
@@ -194,11 +159,86 @@ export const buscarHoteisAirbnb = tool(
   }
 );
 
+export const buscarHoteisHoteisCom = tool(
+  async ({ location, checkinDate, checkoutDate }) => {
+    const finalCheckout = checkoutDate || getCheckoutDefault(checkinDate);
+    try {
+      const results = await getClient().callTool("hoteis_com_plp", {
+        location,
+        checkinDate,
+        checkoutDate: finalCheckout,
+        numAdults: 2,
+        numRooms: 1,
+      });
+      return JSON.stringify(results);
+    } catch (err: any) {
+      return `Erro na busca de hotéis no Hoteis.com: ${err.message}`;
+    }
+  },
+  {
+    name: "buscar_hoteis_hoteis_com",
+    description:
+      "Busca opções de hotéis e hospedagens no site Hoteis.com. Requer a localização de destino (ex: Gramado), data de check-in (YYYY-MM-DD) e data de check-out (YYYY-MM-DD).",
+    schema: z.object({
+      location: z
+        .string()
+        .describe("Cidade ou local de destino para hospedagem (ex: Gramado, Rio de Janeiro)"),
+      checkinDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .describe("Data de check-in (YYYY-MM-DD)"),
+      checkoutDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe("Data de check-out (YYYY-MM-DD)"),
+    }),
+  }
+);
+
+export const buscarHoteisTrivago = tool(
+  async ({ location, checkinDate, checkoutDate }) => {
+    const finalCheckout = checkoutDate || getCheckoutDefault(checkinDate);
+    try {
+      const results = await getClient().callTool("trivago_com_br_plp", {
+        location,
+        checkinDate,
+        checkoutDate: finalCheckout,
+        numAdults: 2,
+        numRooms: 1,
+      });
+      return JSON.stringify(results);
+    } catch (err: any) {
+      return `Erro na busca de hotéis no Trivago: ${err.message}`;
+    }
+  },
+  {
+    name: "buscar_hoteis_trivago",
+    description:
+      "Busca e compara opções de hotéis e hospedagens no comparador Trivago. Requer a localização de destino (ex: Gramado), data de check-in (YYYY-MM-DD) e data de check-out (YYYY-MM-DD).",
+    schema: z.object({
+      location: z
+        .string()
+        .describe("Cidade ou local de destino para hospedagem (ex: Gramado, Rio de Janeiro)"),
+      checkinDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .describe("Data de check-in (YYYY-MM-DD)"),
+      checkoutDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe("Data de check-out (YYYY-MM-DD)"),
+    }),
+  }
+);
+
 // Exportação unificada para uso no LangGraph
 export const travelTools = [
   buscarVoosLatam,
   buscarVoosAzul,
-  buscarVoosKayak,
-  buscarHoteisBooking,
+  buscarVoosGol,
   buscarHoteisAirbnb,
+  buscarHoteisHoteisCom,
+  buscarHoteisTrivago,
 ];
