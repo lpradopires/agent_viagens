@@ -45,7 +45,7 @@ function getModel(): any {
   if (!model) {
     if (process.env.OPENROUTER_API_KEY) {
       model = new ChatOpenAI({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "meta-llama/llama-3.3-70b-instruct:free",
         apiKey: process.env.OPENROUTER_API_KEY,
         configuration: {
           baseURL: "https://openrouter.ai/api/v1",
