@@ -1,0 +1,24 @@
+# Dependências
+node_modules/
+
+# Builds
+dist/
+
+# Variáveis de ambiente (Chaves de API)
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cobertura de Testes
+coverage/
+
+# IDEs e Sistema
+.DS_Store
+.idea/
+.vscode/
+.gemini/
