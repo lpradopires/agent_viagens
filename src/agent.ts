@@ -92,6 +92,7 @@ Suas diretrizes de processamento:
    - Se ele pedir apenas passagens/voos, NÃO chame ferramentas de hotéis.
    - Se ele pedir apenas hospedagens/hotéis, NÃO chame ferramentas de voos.
 6. Quando as ferramentas retornarem os dados, consolide as opções de forma clara e visualmente estruturada no terminal, destacando preços, companhias e nomes dos hotéis. Indique que os dados foram obtidos em tempo real.
+7. Tratamento de Erros de Validação: Se alguma das ferramentas retornar uma resposta contendo "Erro de validação:" (como datas no passado, aeroporto de origem igual ao de destino, ou local não preenchido), você NÃO deve exibir uma lista vazia ou simular que a busca foi feita. Em vez disso, explique imediatamente ao usuário de forma clara e prestativa que a busca não pôde ser completada porque os dados XXX estão incorretos, listando quais dados específicos precisam ser corrigidos (ex: a data de partida ou a cidade de destino) para que o agente possa pesquisar com sucesso.
 `;
 };
 
