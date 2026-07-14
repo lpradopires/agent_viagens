@@ -49,15 +49,9 @@ function getModel(): any {
         apiKey: process.env.GEMINI_API_KEY,
         temperature: 0.2,
       });
-    } else if (process.env.GROQ_API_KEY) {
-      model = new ChatGroq({
-        model: "llama-3.1-8b-instant",
-        apiKey: process.env.GROQ_API_KEY,
-        temperature: 0.2,
-      });
     } else if (process.env.OPENROUTER_API_KEY) {
       model = new ChatOpenAI({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "openai/gpt-4.1-nano",
         apiKey: process.env.OPENROUTER_API_KEY,
         configuration: {
           baseURL: "https://openrouter.ai/api/v1",
@@ -66,6 +60,12 @@ function getModel(): any {
             "X-Title": "Agente de Busca de Viagens",
           },
         },
+        temperature: 0.2,
+      });
+    } else if (process.env.GROQ_API_KEY) {
+      model = new ChatGroq({
+        model: "llama-3.1-8b-instant",
+        apiKey: process.env.GROQ_API_KEY,
         temperature: 0.2,
       });
     } else {
