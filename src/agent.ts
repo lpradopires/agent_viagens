@@ -10,8 +10,10 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-export const activeTools =
-  process.env.TRAVEL_API_PROVIDER?.toLowerCase() === "duffel" ? duffelTools : travelTools;
+export const activeTools = [...travelTools, ...duffelTools];
+export const getActiveTools = () => {
+  return process.env.TRAVEL_API_PROVIDER?.toLowerCase() === "duffel" ? duffelTools : travelTools;
+};
 
 // 1. Definição do Estado Compartilhado (AgentState)
 export const StateAnnotation = Annotation.Root({
@@ -146,7 +148,7 @@ const agentNode = async (state: typeof StateAnnotation.State) => {
 
   let response;
   try {
-    const modelWithTools = getModel().bindTools(activeTools);
+    const modelWithTools = getModel().bindTools(getActiveTools());
     response = await modelWithTools.invoke(messagesWithSystem);
   } catch (err: any) {
     const errMsg = err.message || "";
@@ -174,7 +176,7 @@ const agentNode = async (state: typeof StateAnnotation.State) => {
             },
           },
           temperature: 0.2,
-        }).bindTools(activeTools);
+        }).bindTools(getActiveTools());
         response = await fallbackModel.invoke(messagesWithSystem);
       } catch (fallbackErr: any) {
         throw new Error(
