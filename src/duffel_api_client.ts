@@ -18,7 +18,7 @@ export class DuffelApiClient {
   private getHeaders() {
     return {
       Authorization: `Bearer ${this.apiToken}`,
-      "Duffel-Version": "v1",
+      "Duffel-Version": "v2",
       "Content-Type": "application/json",
     };
   }

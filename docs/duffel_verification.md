@@ -25,9 +25,10 @@ Inicie a CLI do agente (`npm start`) e execute os seguintes cenários de teste:
 
 ### Cenário A: Consulta Completa (Voo + Hospedagem)
 
-> **Você >** *Eu estou em São Paulo e preciso ir para o Rio de Janeiro dia 15/10/2026. Preciso de voos em cabine econômica e de hotel para ficar por 2 dias.*
+> **Você >** _Eu estou em São Paulo e preciso ir para o Rio de Janeiro dia 15/10/2026. Preciso de voos em cabine econômica e de hotel para ficar por 2 dias._
 
 **O que o agente deve fazer:**
+
 1. Chamar `search_airports` para resolver "São Paulo" (ex: GRU/CGH) e "Rio de Janeiro" (ex: GIG/SDU).
 2. Chamar `create_offer_request` na Duffel Flights com as origens/destinos e a data `2026-10-15`.
 3. Chamar `search_hotels_by_location` resolvendo de forma autônoma a latitude e longitude do Rio de Janeiro (`lat -22.9068`, `lng -43.1729`) com raio de 10km, check-in `2026-10-15` e check-out `2026-10-17`.
