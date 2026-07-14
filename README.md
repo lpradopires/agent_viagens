@@ -4,8 +4,6 @@ Este repositório contém a implementação completa de um **Agente Conversacion
 
 O agente é projetado para automatizar a pesquisa unificada de passagens aéreas e hotéis, com suporte a dois provedores de dados configuráveis dinamicamente via arquivo `.env`: a **GeckoAPI** (via protocolo MCP) e a **Duffel API** (Flights e Stays).
 
-Este projeto cumpre **100% dos requisitos de avaliação** listados no documento de [requisitos_do_projeto.md](file:///Users/leandropradopires/Projetos/mini_projeto/docs/requisitos_do_projeto.md).
-
 ---
 
 ## 💼 Apresentação do Produto (Pitch de Negócio)
