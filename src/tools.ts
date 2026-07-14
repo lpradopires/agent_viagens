@@ -66,12 +66,18 @@ function cleanHotelsData(data: any): any[] {
     }));
   }
 
-  const properties = data.properties || data.hotels || data.results || [];
+  const properties = data.properties || data.hotels || data.results || data.items || [];
   if (Array.isArray(properties)) {
     return properties.slice(0, 5).map((p: any) => ({
       name: p.name || p.title || "",
-      price: p.price?.total?.amount || p.price?.amount || p.rate?.amount || null,
-      rating: p.rating?.score || p.rating || p.score || null,
+      price:
+        p.price?.total?.amount ||
+        p.price?.amount ||
+        p.rate?.amount ||
+        p.forecastedPrice?.amount ||
+        p.price ||
+        null,
+      rating: p.rating?.score || p.rating || p.score || p.reviewScore || null,
       address: p.address?.streetAddress || p.address || p.location || "",
     }));
   }
