@@ -3,6 +3,7 @@ process.env.GEMINI_API_KEY = "test_gemini_key_123";
 process.env.GECKO_API_KEY = "test_gecko_key_123";
 delete process.env.GROQ_API_KEY;
 delete process.env.OPENROUTER_API_KEY;
+delete process.env.OPENAI_API_KEY;
 
 import { expect, test, vi, beforeEach, afterEach, describe } from "vitest";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
@@ -18,6 +19,7 @@ describe("LangGraph Agent Engine", () => {
     process.env.GECKO_API_KEY = "test_gecko_key_123";
     delete process.env.GROQ_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
+    delete process.env.OPENAI_API_KEY;
 
     // Espiona o método invoke do protótipo da classe
     invokeSpy = vi.spyOn(ChatGoogleGenerativeAI.prototype, "invoke");

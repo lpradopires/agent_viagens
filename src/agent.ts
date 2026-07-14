@@ -49,6 +49,12 @@ function getModel(): any {
         apiKey: process.env.GEMINI_API_KEY,
         temperature: 0.2,
       });
+    } else if (process.env.OPENAI_API_KEY) {
+      model = new ChatOpenAI({
+        model: "gpt-4.1-nano",
+        apiKey: process.env.OPENAI_API_KEY,
+        temperature: 0.2,
+      });
     } else if (process.env.OPENROUTER_API_KEY) {
       model = new ChatOpenAI({
         model: "openai/gpt-4.1-nano",
@@ -70,7 +76,7 @@ function getModel(): any {
       });
     } else {
       throw new Error(
-        "Nenhuma chave de API configurada. Configure GEMINI_API_KEY, OPENROUTER_API_KEY ou GROQ_API_KEY no arquivo .env."
+        "Nenhuma chave de API configurada. Configure GEMINI_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY ou GROQ_API_KEY no arquivo .env."
       );
     }
   }
