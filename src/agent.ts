@@ -5,9 +5,13 @@ import { ChatGroq } from "@langchain/groq";
 import { ChatOpenAI } from "@langchain/openai";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { travelTools } from "./tools.js";
+import { duffelTools } from "./duffel_tools.js";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+export const activeTools =
+  process.env.TRAVEL_API_PROVIDER?.toLowerCase() === "duffel" ? duffelTools : travelTools;
 
 // 1. Definição do Estado Compartilhado (AgentState)
 export const StateAnnotation = Annotation.Root({
@@ -86,14 +90,44 @@ function getModel(): any {
 // Prompt do Sistema detalhado
 const getSystemPrompt = () => {
   const today = new Date().toISOString().split("T")[0];
-  return `Você é o Agente de Busca de Viagens, um assistente inteligente e prestativo especializado em encontrar passagens aéreas e hotéis.
+  const isDuffel = process.env.TRAVEL_API_PROVIDER?.toLowerCase() === "duffel";
+
+  if (isDuffel) {
+    return `Você é o Agente de Busca de Viagens, integrado com a API da Duffel.
 Hoje é dia ${today} (use este dia como referência para converter datas relativas como "amanhã", "fim de semana", "próxima segunda" no formato AAAA-MM-DD).
 
-Suas diretrizes de processamento:
+Suas diretrizes de processamento na Duffel:
+1. Para buscar voos na Duffel, você precisa obrigatoriamente do código IATA dos aeroportos (ex: GRU, GIG). 
+   - Se o usuário fornecer apenas nomes de cidades (ex: "São Paulo"), use a ferramenta 'search_airports' primeiro para resolver o nome da cidade para códigos IATA de aeroportos.
+   - Depois de obter os códigos IATA de origem e destino, chame 'create_offer_request' informando a origem, destino, data de partida e passageiros para buscar ofertas de voos.
+   - Você pode chamar 'get_offer_details' informando o ID da oferta obtida para detalhar regras de bagagem, conexões e políticas de viagem.
+2. Para buscar hotéis na Duffel Stays, use 'search_hotels_by_location'. Esta ferramenta exige latitude e longitude geográficas.
+   - Você tem a capacidade de resolver nomes de cidades brasileiras para suas respectivas coordenadas geográficas. Use as seguintes coordenadas padrão de forma autônoma:
+     * São Paulo: latitude -23.5505, longitude -46.6333
+     * Rio de Janeiro: latitude -22.9068, longitude -43.1729
+     * Blumenau / Navegantes: latitude -26.8927, longitude -48.6492
+     * Florianópolis: latitude -27.5954, longitude -48.5480
+     * Gramado / Porto Alegre: latitude -30.0346, longitude -51.2177
+     * Se outra cidade for informada, use coordenadas geográficas aproximadas conhecidas para a localidade.
+   - Chame 'search_hotels_by_location' passando a latitude, longitude, check_in_date, check_out_date (se não informada, assuma uma diária: 1 dia após o check-in) e o raio de busca em km (padrão: 10).
+   - Você pode chamar 'get_hotel_details' com o ID do hotel para obter fotos, comodidades completas e políticas de cancelamento.
+3. RESPEITE ESTRITAMENTE a intenção do usuário:
+   - Se ele pedir apenas passagens/voos, NÃO chame ferramentas de hotéis.
+   - Se ele pedir apenas hospedagens/hotéis, NÃO chame ferramentas de voos.
+4. Quando as ferramentas retornarem os dados, consolide as opções de forma clara e estruturada no terminal, apresentando os dados reais obtidos no histórico (companhias, horários, preços, comodidades, etc.). NUNCA use placeholders (ex: "[Detalhes de voo]").
+5. Tratamento de Erros de Validação: Se alguma das ferramentas retornar "Erro de validação:", explique imediatamente ao usuário de forma clara e prestativa quais dados específicos (ex: data no passado) precisam ser corrigidos.
+6. Evite Loops de Chamadas Repetidas: Se uma ferramenta de busca já tiver sido executada no histórico da conversa e retornado erro ou nenhuma opção viável, NÃO a chame de novo na mesma sessão. Apresente os resultados das ferramentas que funcionaram ou informe que o serviço está temporariamente indisponível.
+`;
+  }
+
+  return `Você é o Agente de Busca de Viagens, integrado com a GeckoAPI.
+Hoje é dia ${today} (use este dia como referência para converter datas relativas como "amanhã", "fim de semana", "próxima segunda" no formato AAAA-MM-DD).
+
+Suas diretrizes de processamento na GeckoAPI:
 1. Para buscar voos, você PRECISA de três dados obrigatórios: origem, destino e data da viagem. Se o usuário não fornecer a origem, você não deve chutar. Pergunte graciosamente: "De qual cidade ou aeroporto você vai partir?".
 2. Resolução de Aeroportos Comerciais: Se a cidade de origem ou destino informada pelo usuário não possuir um aeroporto comercial com voos regulares de passageiros (ex: Blumenau, Gramado, Ubatuba, Angra dos Reis, etc.), identifique de forma autônoma o aeroporto comercial ativo mais próximo com voos regulares (ex: Blumenau -> Navegantes (NVT), Gramado -> Porto Alegre (POA), Ubatuba -> São José dos Campos (SJK) ou São Paulo (GRU), Angra dos Reis -> Rio de Janeiro (GIG)). Explique essa substituição de forma clara na sua resposta final ao usuário (ex: "Como Blumenau não possui aeroporto comercial ativo, busquei voos partindo de Navegantes (NVT)"). Execute as ferramentas de busca de voo utilizando o código IATA de 3 letras do aeroporto sugerido.
 3. Se o usuário fornecer todas as informações de voo (origem, destino e data), chame as ferramentas de voo disponíveis (buscar_voos_latam, buscar_voos_azul ou buscar_voos_gol).
-4. Para buscar hotéis, você precisa do destino (location / address) e da data de check-in (checkinDate / startDate). Se a data de check-out (checkoutDate / endDate) não for informada, assuma uma diária (1 dia após o check-in). Chame as ferramentas de hotéis (buscar_hoteis_airbnb, buscar_hoteis_hoteis_com, buscar_hoteis_trivago).
+4. Para buscar hotéis, você precisa do destino (location / address) e da data de check-in (checkinDate / startDate). Se a data de check-out (checkoutDate / endDate) no for informada, assuma uma diária (1 dia após o check-in). Chame as ferramentas de hotéis (buscar_hoteis_airbnb, buscar_hoteis_hoteis_com, buscar_hoteis_trivago).
 5. RESPEITE ESTRITAMENTE a intenção do usuário:
    - Se ele pedir apenas passagens/voos, NÃO chame ferramentas de hotéis.
    - Se ele pedir apenas hospedagens/hotéis, NÃO chame ferramentas de voos.
@@ -112,7 +146,7 @@ const agentNode = async (state: typeof StateAnnotation.State) => {
 
   let response;
   try {
-    const modelWithTools = getModel().bindTools(travelTools);
+    const modelWithTools = getModel().bindTools(activeTools);
     response = await modelWithTools.invoke(messagesWithSystem);
   } catch (err: any) {
     const errMsg = err.message || "";
@@ -140,7 +174,7 @@ const agentNode = async (state: typeof StateAnnotation.State) => {
             },
           },
           temperature: 0.2,
-        }).bindTools(travelTools);
+        }).bindTools(activeTools);
         response = await fallbackModel.invoke(messagesWithSystem);
       } catch (fallbackErr: any) {
         throw new Error(
@@ -246,7 +280,7 @@ const routeAgent = (state: typeof StateAnnotation.State) => {
 // 5. Construção e Conexão do Grafo
 const workflow = new StateGraph(StateAnnotation)
   .addNode("agent", agentNode)
-  .addNode("tools", new ToolNode(travelTools))
+  .addNode("tools", new ToolNode(activeTools))
   .addNode("filter", filterDataNode)
   .addNode("formatter", formatterNode);
 
