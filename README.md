@@ -8,6 +8,23 @@ Este projeto cumpre **100% dos requisitos de avaliação** listados no documento
 
 ---
 
+## 💼 Apresentação do Produto (Pitch de Negócio)
+
+### Parte 1: O Problema e o Desafio de Mercado
+
+Planejar uma viagem de negócios ou lazer hoje em dia é um processo fragmentado e exaustivo. **Muitas vezes, quando precisamos viajar, perdemos horas pesquisando voos e hotéis** em dezenas de abas abertas no navegador, comparando preços flutuantes, horários de conexões e políticas de cancelamento. Essa fricção gera sobrecarga cognitiva, perda de produtividade corporativa e cansaço mental antes mesmo da viagem começar. O mercado carece de um assistente unificado que entenda a intenção de viagem em linguagem natural e realize a curadoria dessas informações instantaneamente.
+
+### Parte 2: A Proposta de Valor e o Produto (O Agente)
+
+O **Agente de Busca de Viagens Autónomo** facilita a vida do usuário ao consolidar todo esse ecossistema em uma única interface inteligente. Através do processamento de linguagem natural (NLP), o agente:
+
+1. **Entende a intenção de viagem do usuário:** Extrai de forma autônoma origens, destinos, períodos de estadia e preferências.
+2. **Resolve rotas comerciais de forma proativa:** Mapeia cidades sem aeroportos para os aeroportos comerciais ativos mais próximos (ex: Blumenau -> Navegantes - NVT).
+3. **Consulta múltiplas APIs em tempo real:** Chaveia dinamicamente e consulta provedores em paralelo (Duffel API e GeckoAPI), trazendo opções reais de voos e hotéis de maneira instantânea.
+   O resultado é um relatório limpo, consolidado e direto ao ponto que reduz o tempo de planejamento de horas para segundos, poupando tempo e facilitando a vida do viajante.
+
+---
+
 ## 🛠️ 1. Arquitetura do Sistema e Fluxo no LangGraph
 
 O agente utiliza uma **Máquina de Estados Finita Cíclica (FSM)** orquestrada pelo **LangGraph** que transita de forma assíncrona entre nós com tomada de decisão cognitiva (LLM), uso de ferramentas em paralelo e pós-processamento redutor de tokens.
