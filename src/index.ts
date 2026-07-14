@@ -13,7 +13,10 @@ const rl = readline.createInterface({
 
 // Identificador exclusivo de sessão conversacional para a memória de curto prazo (checkpointer)
 const threadId = `cli_session_${Math.floor(Math.random() * 1000000)}`;
-const config = { configurable: { thread_id: threadId } };
+const config = {
+  configurable: { thread_id: threadId },
+  recursionLimit: 15, // Limite máximo de passos/nós por requisição para proteção contra loops
+};
 
 console.log(chalk.bold.cyan("\n======================================================="));
 console.log(chalk.bold.cyan("       AGENTE DE BUSCA DE VIAGENS AUTÔNOMO             "));
@@ -59,7 +62,18 @@ async function promptUser() {
       console.log(lastMessage.content);
       console.log(chalk.gray("\n-------------------------------------------------------"));
     } catch (error: any) {
-      console.log(chalk.bold.red(`\n[Erro no Processamento]: ${error.message}`));
+      if (
+        error.name === "GraphRecursionError" ||
+        error.message?.toLowerCase().includes("recursion")
+      ) {
+        console.log(
+          chalk.bold.red(
+            "\n[Erro no Processamento]: Limite de passos/recursão do agente atingido para segurança contra loops de execução."
+          )
+        );
+      } else {
+        console.log(chalk.bold.red(`\n[Erro no Processamento]: ${error.message}`));
+      }
       console.log(chalk.gray("\n-------------------------------------------------------"));
     }
 
