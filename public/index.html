@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agente de Viagens Autônomo - Interface Conversacional</title>
+    <meta
+      name="description"
+      content="Assistente inteligente para busca de passagens aéreas, voos e hospedagens com IA autônoma."
+    />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- FontAwesome Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Marked.js para renderização de Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Estilos Customizados -->
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Header Principal -->
+      <header class="app-header">
+        <div class="brand-container">
+          <div class="logo-icon">
+            <i class="fa-solid fa-plane-departure"></i>
+          </div>
+          <div class="brand-text">
+            <h1>Agente de Viagens IA</h1>
+            <span class="subtitle">Assistente Autônomo de Voo & Hospedagem</span>
+          </div>
+        </div>
+
+        <div class="header-status">
+          <div class="status-badge" id="statusBadge">
+            <span class="status-dot online"></span>
+            <span id="statusText">Conectado ao Grafo</span>
+          </div>
+          <div class="meta-pill" id="providerPill" title="Provedor de APIs de Viagem Ativo">
+            <i class="fa-solid fa-cloud-bolt"></i>
+            <span id="providerText">GeckoAPI</span>
+          </div>
+          <div class="meta-pill model-pill" id="modelPill" title="Modelo de IA Ativo">
+            <i class="fa-solid fa-brain"></i>
+            <span id="modelText">Gemini 2.5 Flash</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Sub-header com Avisos e Reset -->
+      <div class="sub-bar">
+        <div class="session-info">
+          <i class="fa-solid fa-hashtag"></i>
+          <span>Sessão: <strong id="threadIdDisplay">web_session_init</strong></span>
+        </div>
+        <div class="sub-actions">
+          <button
+            id="btnNewSession"
+            class="btn-secondary-sm"
+            title="Iniciar nova conversa com memória limpa"
+          >
+            <i class="fa-solid fa-rotate-left"></i> Nova Conversa
+          </button>
+        </div>
+      </div>
+
+      <!-- Layout Principal com 2 Colunas -->
+      <main class="main-layout">
+        <!-- COLUNA ESQUERDA: Painel de Filtros e Opções -->
+        <aside class="sidebar-panel">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-sliders"></i> Filtros de Viagem</h2>
+            <span class="badge-auto">Atualização em tempo real</span>
+          </div>
+
+          <form id="filtersForm" class="filters-form" onsubmit="event.preventDefault()">
+            <!-- Origem -->
+            <div class="form-group">
+              <label for="filterOrigin">
+                <i class="fa-solid fa-location-dot icon-origin"></i> Origem
+              </label>
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  id="filterOrigin"
+                  placeholder="Ex: São Paulo ou GRU"
+                  value="São Paulo"
+                  autocomplete="off"
+                />
+                <span class="input-hint">Cidade ou código IATA</span>
+              </div>
+            </div>
+
+            <!-- Destino -->
+            <div class="form-group">
+              <label for="filterDestination">
+                <i class="fa-solid fa-location-crosshairs icon-dest"></i> Destino
+              </label>
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  id="filterDestination"
+                  placeholder="Ex: Rio de Janeiro ou SDU"
+                  value="Rio de Janeiro"
+                  autocomplete="off"
+                />
+                <span class="input-hint">Cidade ou destino final</span>
+              </div>
+            </div>
+
+            <!-- Grid de Datas -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="filterDepartureDate">
+                  <i class="fa-regular fa-calendar-check"></i> Partida / Check-in
+                </label>
+                <input type="date" id="filterDepartureDate" />
+              </div>
+
+              <div class="form-group">
+                <label for="filterReturnDate">
+                  <i class="fa-regular fa-calendar-minus"></i> Retorno / Check-out
+                </label>
+                <input type="date" id="filterReturnDate" />
+              </div>
+            </div>
+
+            <!-- Opções de Busca (Toggles / Checkboxes) -->
+            <div class="form-group">
+              <label class="section-label"
+                ><i class="fa-solid fa-layer-group"></i> O que deseja buscar?</label
+              >
+
+              <div class="toggles-grid">
+                <label class="toggle-card" for="chkFlights">
+                  <input type="checkbox" id="chkFlights" checked />
+                  <div class="toggle-content">
+                    <i class="fa-solid fa-plane"></i>
+                    <span>Voos & Passagens</span>
+                  </div>
+                </label>
+
+                <label class="toggle-card" for="chkHotels">
+                  <input type="checkbox" id="chkHotels" checked />
+                  <div class="toggle-content">
+                    <i class="fa-solid fa-hotel"></i>
+                    <span>Hotéis & Pousadas</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Passageiros -->
+            <div class="form-group">
+              <label for="filterPassengers">
+                <i class="fa-solid fa-users"></i> Passageiros / Hóspedes
+              </label>
+              <select id="filterPassengers">
+                <option value="1 adult">1 Adulto</option>
+                <option value="2 adults" selected>2 Adultos</option>
+                <option value="2 adults, 1 child">2 Adultos + 1 Criança</option>
+                <option value="Familia (4 pessoas)">Família (4 pessoas)</option>
+              </select>
+            </div>
+
+            <!-- Presets Rápidos -->
+            <div class="form-group">
+              <label class="section-label"
+                ><i class="fa-solid fa-wand-magic-sparkles"></i> Sugestões Rápidas</label
+              >
+              <div class="preset-chips">
+                <button
+                  type="button"
+                  class="chip-btn"
+                  data-origin="São Paulo"
+                  data-dest="Rio de Janeiro"
+                >
+                  🏝️ SP ➔ Rio
+                </button>
+                <button type="button" class="chip-btn" data-origin="São Paulo" data-dest="Gramado">
+                  🍷 SP ➔ Gramado
+                </button>
+                <button
+                  type="button"
+                  class="chip-btn"
+                  data-origin="Curitiba"
+                  data-dest="Florianópolis"
+                >
+                  🏖️ CWB ➔ Floripa
+                </button>
+                <button
+                  type="button"
+                  class="chip-btn"
+                  data-origin="Belo Horizonte"
+                  data-dest="Salvador"
+                >
+                  ☀️ BH ➔ Salvador
+                </button>
+              </div>
+            </div>
+          </form>
+        </aside>
+
+        <!-- COLUNA DIREITA: Chat Conversacional & Caixa de Prompt -->
+        <section class="chat-section">
+          <!-- Feed de Mensagens do Chat -->
+          <div class="chat-feed" id="chatFeed">
+            <!-- Mensagem de Boas-Vindas do Agente -->
+            <div class="chat-message agent-message">
+              <div class="avatar agent-avatar">
+                <i class="fa-solid fa-robot"></i>
+              </div>
+              <div class="message-body">
+                <div class="message-header">
+                  <span class="sender-name">Agente de Viagens IA</span>
+                  <span class="message-time">Agora</span>
+                </div>
+                <div class="message-text">
+                  <p>
+                    Olá! Sou seu <strong>Agente Autônomo de Viagens</strong>. Posso pesquisar
+                    passagens aéreas e acomodações em tempo real para o seu próximo destino! ✈️🏨
+                  </p>
+                  <p>
+                    Ajuste os filtros à esquerda para gerar seu pedido ou digite diretamente abaixo
+                    o que deseja pesquisar.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Indicador de Carregamento (Oculto por padrão) -->
+          <div class="typing-indicator-container hidden" id="typingIndicator">
+            <div class="avatar agent-avatar">
+              <i class="fa-solid fa-robot"></i>
+            </div>
+            <div class="typing-bubble">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="typing-text"
+                >O agente está consultando as ferramentas e APIs de viagem...</span
+              >
+            </div>
+          </div>
+
+          <!-- Caixa de Interação e Envio de Prompt -->
+          <div class="prompt-interaction-box">
+            <div class="prompt-header-tools">
+              <span class="prompt-label">
+                <i class="fa-solid fa-pen-to-square"></i> Prompt para o Agente (baseado nos filtros)
+              </span>
+              <div class="prompt-actions">
+                <button
+                  type="button"
+                  id="btnResetPrompt"
+                  class="btn-link"
+                  title="Restaurar o prompt automático dos filtros"
+                >
+                  <i class="fa-solid fa-arrow-rotate-right"></i> Restaurar Gerado
+                </button>
+                <button
+                  type="button"
+                  id="btnClearChat"
+                  class="btn-link"
+                  title="Limpar mensagens da tela"
+                >
+                  <i class="fa-solid fa-trash-can"></i> Limpar Tela
+                </button>
+              </div>
+            </div>
+
+            <div class="prompt-input-wrapper">
+              <textarea
+                id="promptInput"
+                rows="3"
+                placeholder="Digite ou edite sua solicitação de viagem..."
+              ></textarea>
+
+              <button
+                id="btnSendMessage"
+                class="btn-send"
+                title="Enviar mensagem ao agente (Enter)"
+              >
+                <span>Enviar</span>
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+
+            <div class="prompt-footer-hints">
+              <span
+                ><i class="fa-solid fa-keyboard"></i> Pressione <strong>Enter</strong> para enviar,
+                <strong>Shift + Enter</strong> para nova linha.</span
+              >
+              <span id="promptSyncBadge" class="sync-badge active"
+                ><i class="fa-solid fa-link"></i> Sincronizado com os Filtros</span
+              >
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Toast Notification System -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Script Principal -->
+    <script src="app.js"></script>
+  </body>
+</html>
