@@ -1,11 +1,10 @@
 import { Annotation, StateGraph, END, START, MemorySaver } from "@langchain/langgraph";
-import { BaseMessage, SystemMessage } from "@langchain/core/messages";
+import { BaseMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatGroq } from "@langchain/groq";
 import { ChatOpenAI } from "@langchain/openai";
-import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { travelTools } from "./tools.js";
-import { duffelTools } from "./duffel_tools.js";
+import { travelTools, travelVoosTools, travelHoteisTools } from "./tools.js";
+import { duffelTools, duffelVoosTools, duffelHoteisTools } from "./duffel_tools.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -14,6 +13,16 @@ export const activeTools = [...travelTools, ...duffelTools];
 export const getActiveTools = () => {
   return process.env.TRAVEL_API_PROVIDER?.toLowerCase() === "duffel" ? duffelTools : travelTools;
 };
+
+// Mapas de execução por categoria (voo / hotel), combinando os dois provedores.
+// Cada node paralelo só executa as tool_calls cujo nome esteja no seu próprio mapa;
+// o nome da ferramenta é único entre os provedores, então não há colisão.
+const voosToolsByName = new Map<string, any>(
+  [...travelVoosTools, ...duffelVoosTools].map((t) => [t.name, t])
+);
+const hoteisToolsByName = new Map<string, any>(
+  [...travelHoteisTools, ...duffelHoteisTools].map((t) => [t.name, t])
+);
 
 // 1. Definição do Estado Compartilhado (AgentState)
 export const StateAnnotation = Annotation.Root({
@@ -270,33 +279,96 @@ const formatterNode = (_state: typeof StateAnnotation.State) => {
   return {};
 };
 
-// 4. Lógica de Roteamento Dinâmico (Router Edge)
-const routeAgent = (state: typeof StateAnnotation.State) => {
-  const lastMessage = state.messages[state.messages.length - 1];
-  if (lastMessage && (lastMessage as any).tool_calls?.length > 0) {
-    return "tools";
+// Executa, em paralelo (Promise.all), apenas as tool_calls cujo nome pertence
+// à categoria (mapa) recebida — ignora silenciosamente as demais, pois elas
+// são de responsabilidade do outro node paralelo (voo ou hotel).
+async function runToolsForCategory(
+  state: typeof StateAnnotation.State,
+  toolsByName: Map<string, any>
+) {
+  const lastMessage = state.messages[state.messages.length - 1] as any;
+  const toolCalls: Array<{ name: string; args: any; id?: string }> = lastMessage?.tool_calls ?? [];
+  const relevantCalls = toolCalls.filter((call) => toolsByName.has(call.name));
+
+  if (relevantCalls.length === 0) {
+    return { messages: [] };
   }
-  return "formatter";
+
+  const results = await Promise.all(
+    relevantCalls.map(async (call) => {
+      const tool = toolsByName.get(call.name);
+      try {
+        const output = await tool.invoke(call.args);
+        return new ToolMessage({
+          status: "success",
+          name: call.name,
+          content: typeof output === "string" ? output : JSON.stringify(output),
+          tool_call_id: call.id ?? "",
+        });
+      } catch (err: any) {
+        return new ToolMessage({
+          status: "error",
+          name: call.name,
+          content: `Erro: ${err.message}`,
+          tool_call_id: call.id ?? "",
+        });
+      }
+    })
+  );
+
+  return { messages: results };
+}
+
+// Node paralelo: executa apenas as tool_calls de busca de voos (Gecko ou Duffel)
+const toolsVoosNode = (state: typeof StateAnnotation.State) =>
+  runToolsForCategory(state, voosToolsByName);
+
+// Node paralelo: executa apenas as tool_calls de busca de hotéis (Gecko ou Duffel)
+const toolsHoteisNode = (state: typeof StateAnnotation.State) =>
+  runToolsForCategory(state, hoteisToolsByName);
+
+// 4. Lógica de Roteamento Dinâmico (Router Edge)
+// Retorna uma LISTA de destinos: quando o modelo solicita voo e hotel na mesma
+// resposta, o grafo faz fan-out para os dois nodes simultaneamente (paralelização
+// real, visível na estrutura do grafo) e faz fan-in de volta em "filter".
+const routeAgent = (state: typeof StateAnnotation.State): string[] => {
+  const lastMessage = state.messages[state.messages.length - 1] as any;
+  const toolCalls: Array<{ name: string }> = lastMessage?.tool_calls ?? [];
+
+  if (toolCalls.length === 0) {
+    return ["formatter"];
+  }
+
+  const destinations = new Set<string>();
+  for (const call of toolCalls) {
+    if (voosToolsByName.has(call.name)) destinations.add("tools_voos");
+    if (hoteisToolsByName.has(call.name)) destinations.add("tools_hoteis");
+  }
+
+  return destinations.size > 0 ? Array.from(destinations) : ["formatter"];
 };
 
 // 5. Construção e Conexão do Grafo
 const workflow = new StateGraph(StateAnnotation)
   .addNode("agent", agentNode)
-  .addNode("tools", new ToolNode(activeTools))
+  .addNode("tools_voos", toolsVoosNode)
+  .addNode("tools_hoteis", toolsHoteisNode)
   .addNode("filter", filterDataNode)
   .addNode("formatter", formatterNode);
 
 // Define as transições do fluxo
 workflow.addEdge(START, "agent");
 
-// Roteamento condicional pós-agente
+// Roteamento condicional pós-agente — pode disparar um ou os dois nodes de tool em paralelo
 workflow.addConditionalEdges("agent", routeAgent, {
-  tools: "tools",
+  tools_voos: "tools_voos",
+  tools_hoteis: "tools_hoteis",
   formatter: "formatter",
 });
 
-// Loops de execução de ferramenta e limpeza
-workflow.addEdge("tools", "filter");
+// Fan-in: os dois ramos paralelos convergem para o mesmo node de filtragem
+workflow.addEdge("tools_voos", "filter");
+workflow.addEdge("tools_hoteis", "filter");
 workflow.addEdge("filter", "agent");
 
 // Finalização

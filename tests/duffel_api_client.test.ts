@@ -7,6 +7,7 @@ import {
   searchHotelsByLocation,
   getHotelDetails,
 } from "../src/duffel_tools.js";
+import { futureDate } from "./helpers/dates.js";
 
 describe("Duffel API Client & Tools Integration", () => {
   beforeEach(() => {
@@ -24,8 +25,8 @@ describe("Duffel API Client & Tools Integration", () => {
     const hotels = await client.searchHotelsByLocation({
       latitude: -23.5505,
       longitude: -46.6333,
-      check_in_date: "2026-08-15",
-      check_out_date: "2026-08-17",
+      check_in_date: futureDate(30),
+      check_out_date: futureDate(32),
     });
     expect(hotels.length).toBeGreaterThan(0);
     expect(hotels[0].name).toBe("Meliá Paulista Stays");
@@ -51,7 +52,7 @@ describe("Duffel API Client & Tools Integration", () => {
     const respOk = await createOfferRequest.invoke({
       origin: "GRU",
       destination: "GIG",
-      departure_date: "2026-08-15",
+      departure_date: futureDate(30),
     });
     const parsed = JSON.parse(respOk);
     expect(parsed.id).toBe("off_req_mock_123");
@@ -74,8 +75,8 @@ describe("Duffel API Client & Tools Integration", () => {
     const respFailCheckout = await searchHotelsByLocation.invoke({
       latitude: -23.5505,
       longitude: -46.6333,
-      check_in_date: "2026-08-15",
-      check_out_date: "2026-08-10",
+      check_in_date: futureDate(30),
+      check_out_date: futureDate(25),
     });
     expect(respFailCheckout).toContain("Erro de validação");
 
@@ -83,8 +84,8 @@ describe("Duffel API Client & Tools Integration", () => {
     const respOk = await searchHotelsByLocation.invoke({
       latitude: -23.5505,
       longitude: -46.6333,
-      check_in_date: "2026-08-15",
-      check_out_date: "2026-08-17",
+      check_in_date: futureDate(30),
+      check_out_date: futureDate(32),
     });
     const parsed = JSON.parse(respOk);
     expect(parsed.length).toBe(2);

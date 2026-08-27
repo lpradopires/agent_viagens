@@ -357,12 +357,9 @@ export const buscarHoteisTrivago = tool(
   }
 );
 
-// Exportação unificada para uso no LangGraph
-export const travelTools = [
-  buscarVoosLatam,
-  buscarVoosAzul,
-  buscarVoosGol,
-  buscarHoteisAirbnb,
-  buscarHoteisHoteisCom,
-  buscarHoteisTrivago,
-];
+// Agrupamentos por categoria — usados pelos nodes paralelos de voo/hotel no LangGraph
+export const travelVoosTools = [buscarVoosLatam, buscarVoosAzul, buscarVoosGol];
+export const travelHoteisTools = [buscarHoteisAirbnb, buscarHoteisHoteisCom, buscarHoteisTrivago];
+
+// Exportação unificada para uso no LangGraph (bind do modelo)
+export const travelTools = [...travelVoosTools, ...travelHoteisTools];
