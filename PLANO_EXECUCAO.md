@@ -18,15 +18,16 @@
 
 ### 0.1 — Criar estrutura de branches e pastas de documentação
 
-- [ ] Status: pendente
+- [~] Status: em andamento (branch, pastas e commit feitos; Kanban e colaborador pendentes de ação manual do usuário)
 - **Requisitos:** R36, R37 (branches `main`/`develop`/`feature/*`, `/docs/qa`, `/docs/evidencias`)
 - **Branch:** trabalhar direto, cria a própria estrutura
 - **Ações:**
-  - Criar branch `develop` a partir de `main`
-  - Criar pastas `docs/qa/.gitkeep` e `docs/evidencias/.gitkeep`
-  - Criar `GitHub Project` (Kanban) com colunas Backlog / A Fazer / Em Andamento / Bloqueado / Em Revisão / Concluído
-  - Adicionar um card por atividade deste plano
-  - Adicionar o professor como colaborador do repositório
+  - [x] Criar branch `develop` a partir de `main` e publicar em `origin/develop`
+  - [x] Criar pastas `docs/qa/.gitkeep` e `docs/evidencias/.gitkeep`
+  - [x] Commitar (`docs: adicionar analise de requisitos e plano de execucao do projeto final`)
+  - [ ] Criar `GitHub Project` (Kanban) com colunas Backlog / A Fazer / Em Andamento / Bloqueado / Em Revisão / Concluído — bloqueado: token `gh` sem escopo `project`; usuário precisa rodar `gh auth refresh -s project,read:project --hostname github.com` ou criar manualmente em github.com/users/lpradopires/projects
+  - [ ] Adicionar um card por atividade deste plano
+  - [ ] Adicionar o professor como colaborador do repositório — aguardando o username do professor
 - **Definição de Pronto:** branch `develop` existe e é a branch de trabalho; pastas criadas; Kanban criado com todos os cards deste plano; professor convidado.
 
 ---
