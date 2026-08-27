@@ -8,6 +8,7 @@ import {
   buscarHoteisHoteisCom,
   buscarHoteisTrivago,
 } from "../src/tools.js";
+import { futureDate } from "./helpers/dates.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -151,7 +152,7 @@ describe("LangChain Integration Tools", () => {
     const response = await buscarVoosLatam.invoke({
       from: "GRU",
       to: "SDU",
-      departureDate: "2026-08-15",
+      departureDate: futureDate(30),
     });
 
     expect(response).toBe(JSON.stringify([{ airline: "LATAM", price: 700, departure: "" }]));
@@ -166,7 +167,7 @@ describe("LangChain Integration Tools", () => {
 
     const response = await buscarHoteisHoteisCom.invoke({
       location: "Gramado",
-      checkinDate: "2026-08-15",
+      checkinDate: futureDate(30),
     });
 
     expect(response).toContain("Erro na busca de hotéis no Hoteis.com");
@@ -189,14 +190,14 @@ describe("LangChain Integration Tools", () => {
     const respAzul = await buscarVoosAzul.invoke({
       from: "VCP",
       to: "CNF",
-      departureDate: "2026-08-15",
+      departureDate: futureDate(30),
     });
     expect(respAzul).toContain("Azul/GOL");
 
     const respGol = await buscarVoosGol.invoke({
       from: "SAO",
       to: "RIO",
-      departureDate: "2026-08-15",
+      departureDate: futureDate(30),
     });
     expect(respGol).toContain("Azul/GOL");
   });
@@ -217,7 +218,7 @@ describe("LangChain Integration Tools", () => {
 
     const respAirbnb = await buscarHoteisAirbnb.invoke({
       address: "Ubatuba",
-      startDate: "2026-08-15",
+      startDate: futureDate(30),
     });
     expect(respAirbnb).toBe(
       JSON.stringify([{ name: "Hotel Teste", price: 300, rating: null, address: "" }])
@@ -225,7 +226,7 @@ describe("LangChain Integration Tools", () => {
 
     const respTrivago = await buscarHoteisTrivago.invoke({
       location: "Ubatuba",
-      checkinDate: "2026-08-15",
+      checkinDate: futureDate(30),
     });
     expect(respTrivago).toContain("Hotel Teste");
   });
@@ -245,7 +246,7 @@ describe("LangChain Integration Tools", () => {
     const respVooIdentico = await buscarVoosLatam.invoke({
       from: "GRU",
       to: "GRU",
-      departureDate: "2026-08-15",
+      departureDate: futureDate(30),
     });
     expect(respVooIdentico).toContain(
       "Erro de validação: O aeroporto de origem (GRU) não pode ser idêntico ao de destino (GRU)"
