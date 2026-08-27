@@ -79,13 +79,17 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 2.1 — Limites de autonomia + ação simulada com aprovação humana
 
-- [ ] Status: pendente
-- **Requisitos:** R10, R15
-- **Branch:** `feature/governanca`
+- [x] Status: concluído
+- **Requisitos:** R10, R15 ✅
+- **Branch:** `feature/governanca` (PR aberto ao final da 2.2, que usa a mesma branch)
 - **Ações:**
-  - Criar tool simulada `confirmar_reserva` que nunca executa "de primeira": sempre retorna uma pergunta de confirmação e só finaliza após o usuário confirmar explicitamente na rodada seguinte
-  - Documentar a regra de autonomia no system prompt (`getSystemPrompt`): quando pedir confirmação, quando bloquear, quando agir livremente
-- **Definição de Pronto:** teste demonstra que a tool de reserva não é concluída sem confirmação explícita do usuário; comportamento documentado.
+  - [x] Tool `confirmar_reserva` em `src/reservation_tools.ts`: 1ª chamada sem `codigo_confirmacao` registra pendência e retorna `CONF-XXXX` **sem executar**; 2ª chamada só executa (simulada, `localizador SIM-*`) se a pendência existir
+  - [x] Gate **determinístico** extra no node `tools_reserva` (`src/agent.ts`): a confirmação só é aceita se o código estiver literalmente na última `HumanMessage` — o usuário precisa digitá-lo; o LLM não consegue se auto-aprovar (limite imposto pela aplicação, não pelo modelo)
+  - [x] Regras de governança (`GOVERNANCE_RULES`) anexadas ao system prompt dos dois provedores: buscas read-only livres, reserva exige aprovação, nunca inventar código, não contornar bloqueios
+  - [x] Node `tools_reserva` integrado ao fan-out do `routeAgent` e ao fan-in em `filter`
+  - [x] 4 testes em `tests/reservation.test.ts`: pendência sem execução, código inválido, fluxo completo de aprovação no grafo (2 turnos), bloqueio de auto-aprovação pelo modelo
+  - [x] `CLAUDE.md` atualizado (arquitetura de nodes paralelos + governança; texto do `ToolNode` estava obsoleto desde a 1.1)
+- **Definição de Pronto:** ✅ testes demonstram que a reserva não é concluída sem confirmação explícita digitada pelo usuário; `lint`/`build`/`test` verdes (28/28); commits `83db0b9` e `9f16c90` publicados na branch.
 
 ### 2.2 — Cenário adversarial de prompt injection
 
