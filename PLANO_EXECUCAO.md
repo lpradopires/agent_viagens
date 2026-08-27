@@ -18,17 +18,18 @@
 
 ### 0.1 — Criar estrutura de branches e pastas de documentação
 
-- [~] Status: em andamento (branch, pastas e commit feitos; Kanban criado pelo usuário, aguardando link/confirmação para popular cards)
+- [x] Status: concluído
 - **Requisitos:** R36, R37 (branches `main`/`develop`/`feature/*`, `/docs/qa`, `/docs/evidencias`)
 - **Branch:** trabalhar direto, cria a própria estrutura
+- **Kanban:** https://github.com/users/lpradopires/projects/10/views/1 — "Projeto Avaliativo M2S08"
 - **Ações:**
   - [x] Criar branch `develop` a partir de `main` e publicar em `origin/develop`
   - [x] Criar pastas `docs/qa/.gitkeep` e `docs/evidencias/.gitkeep`
   - [x] Commitar (`docs: adicionar analise de requisitos e plano de execucao do projeto final`)
-  - [x] Criar `GitHub Project` (Kanban) — usuário já criou; falta confirmar link/nome para popular os cards das atividades deste plano
-  - [ ] Adicionar um card por atividade deste plano (pendente: aguardando link do board)
+  - [x] Criar `GitHub Project` (Kanban) com colunas Backlog / A Fazer / Em Andamento / Bloqueado / Em Revisão / Concluído
+  - [x] Criar um card por atividade deste plano (16 cards, `0.1` em Em Andamento, `1.1` em A Fazer, demais em Backlog)
   - **Nota:** por decisão do usuário, a adição do professor como colaborador foi movida para a **Fase 8.2** (última etapa antes do merge final / submissão), em vez de agora.
-- **Definição de Pronto (ajustada):** branch `develop` existe; pastas criadas; Kanban criado e populado com os cards deste plano. (Colaborador tratado na Fase 8.2.)
+- **Definição de Pronto:** branch `develop` existe; pastas criadas; Kanban criado e populado com os cards deste plano. ✅ (Colaborador tratado na Fase 8.2.)
 - **Definição de Pronto:** branch `develop` existe e é a branch de trabalho; pastas criadas; Kanban criado com todos os cards deste plano; professor convidado.
 
 ---
