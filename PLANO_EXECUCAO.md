@@ -18,16 +18,17 @@
 
 ### 0.1 — Criar estrutura de branches e pastas de documentação
 
-- [~] Status: em andamento (branch, pastas e commit feitos; Kanban e colaborador pendentes de ação manual do usuário)
+- [~] Status: em andamento (branch, pastas e commit feitos; Kanban criado pelo usuário, aguardando link/confirmação para popular cards)
 - **Requisitos:** R36, R37 (branches `main`/`develop`/`feature/*`, `/docs/qa`, `/docs/evidencias`)
 - **Branch:** trabalhar direto, cria a própria estrutura
 - **Ações:**
   - [x] Criar branch `develop` a partir de `main` e publicar em `origin/develop`
   - [x] Criar pastas `docs/qa/.gitkeep` e `docs/evidencias/.gitkeep`
   - [x] Commitar (`docs: adicionar analise de requisitos e plano de execucao do projeto final`)
-  - [ ] Criar `GitHub Project` (Kanban) com colunas Backlog / A Fazer / Em Andamento / Bloqueado / Em Revisão / Concluído — bloqueado: token `gh` sem escopo `project`; usuário precisa rodar `gh auth refresh -s project,read:project --hostname github.com` ou criar manualmente em github.com/users/lpradopires/projects
-  - [ ] Adicionar um card por atividade deste plano
-  - [ ] Adicionar o professor como colaborador do repositório — aguardando o username do professor
+  - [x] Criar `GitHub Project` (Kanban) — usuário já criou; falta confirmar link/nome para popular os cards das atividades deste plano
+  - [ ] Adicionar um card por atividade deste plano (pendente: aguardando link do board)
+  - **Nota:** por decisão do usuário, a adição do professor como colaborador foi movida para a **Fase 8.2** (última etapa antes do merge final / submissão), em vez de agora.
+- **Definição de Pronto (ajustada):** branch `develop` existe; pastas criadas; Kanban criado e populado com os cards deste plano. (Colaborador tratado na Fase 8.2.)
 - **Definição de Pronto:** branch `develop` existe e é a branch de trabalho; pastas criadas; Kanban criado com todos os cards deste plano; professor convidado.
 
 ---
@@ -202,9 +203,10 @@
 - **Ações:**
   - Revisar todas as `feature/*` mescladas em `develop`
   - Confirmar Kanban atualizado (cards movidos para "Concluído")
+  - **Adicionar o professor como colaborador do repositório** (movido da Fase 0.1 por decisão do usuário — feito só no final)
   - Merge final `develop` → `main`
   - Confirmar que nenhum segredo foi versionado em nenhum ponto do histórico
-- **Definição de Pronto:** `main` contém a versão final e funcional; Kanban refletindo o estado real.
+- **Definição de Pronto:** `main` contém a versão final e funcional; Kanban refletindo o estado real; professor com acesso de colaborador.
 
 ---
 
