@@ -53,7 +53,6 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
   - [x] Criar um card por atividade deste plano (16 cards, `0.1` em Em Andamento, `1.1` em A Fazer, demais em Backlog)
   - **Nota:** por decisão do usuário, a adição do professor como colaborador foi movida para a **Fase 8.2** (última etapa antes do merge final / submissão), em vez de agora.
 - **Definição de Pronto:** branch `develop` existe; pastas criadas; Kanban criado e populado com os cards deste plano. ✅ (Colaborador tratado na Fase 8.2.)
-- **Definição de Pronto:** branch `develop` existe e é a branch de trabalho; pastas criadas; Kanban criado com todos os cards deste plano; professor convidado.
 
 ---
 
@@ -61,15 +60,18 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 1.1 — Paralelização real no grafo (fan-out/fan-in voo + hotel)
 
-- [ ] Status: pendente
-- **Requisitos:** R6 (ramificação condicional + paralelização simples)
-- **Branch:** `feature/langgraph-paralelizacao`
+- [x] Status: concluído
+- **Requisitos:** R6 (ramificação condicional + paralelização simples) ✅
+- **Branch:** `feature/langgraph-paralelizacao` (mesclada em `develop` via PR [#1](https://github.com/lpradopires/agent_viagens/pull/1))
 - **Ações:**
-  - Separar o node `tools` em dois nodes (`tools_voos`, `tools_hoteis`), cada um com seu próprio `ToolNode`
-  - `routeAgent` passa a poder retornar múltiplos destinos simultâneos (fan-out) quando o agente pedir voo e hotel na mesma resposta
-  - Ambos convergem de volta em `filter` (fan-in)
-  - Atualizar/criar testes em `tests/agent.test.ts` cobrindo o caminho paralelo
-- **Definição de Pronto:** teste automatizado comprova que voo e hotel são buscados na mesma rodada de execução, com o grafo passando por dois nodes de tool distintos; testes verdes.
+  - [x] Separar o node `tools` em dois nodes (`tools_voos`, `tools_hoteis`) — implementados como funções próprias (não `ToolNode` genérico), pois o `ToolNode` embutido processa **todas** as tool_calls da última mensagem sem filtrar por categoria, o que geraria respostas duplicadas/erros ao rodar dois `ToolNode` em paralelo sobre a mesma mensagem
+  - [x] `routeAgent` retorna `string[]` (fan-out nativo do LangGraph.js) — quando o modelo pede voo e hotel na mesma resposta, ambos os nodes disparam simultaneamente
+  - [x] Ambos convergem de volta em `filter` (fan-in)
+  - [x] Novo teste em `tests/agent.test.ts` comprovando 2 `ToolMessage`s distintos (voo + hotel) na mesma rodada
+  - [x] Efeito colateral descoberto e corrigido: CI só rodava em `main`, não validava PRs para `develop` — corrigido em `.github/workflows/ci.yml`
+  - [x] Efeito colateral descoberto e corrigido: datas fixas nos testes (`"2026-08-15"`) haviam virado passado com o avanço do tempo, quebrando 8 testes pré-existentes (não regressão desta atividade, confirmado via `git stash`) — corrigido com `tests/helpers/dates.ts`
+- **Definição de Pronto:** ✅ teste automatizado comprova que voo e hotel são buscados na mesma rodada de execução, passando por dois nodes de tool distintos; `npm run lint && npm run build && npm test` verdes (24/24); PR mesclado em `develop`; branch remota deletada.
+- **Nota para a Atividade 4.1 (revisão de diff por IA):** este é o diff candidato natural — o pre-existing bug em `filterDataNode` (categoriza resultados por `msg.name?.includes("voos"/"hoteis")`, que não bate com os nomes das tools Duffel como `search_hotels_by_location`) não foi corrigido aqui por estar fora do escopo desta atividade, mas é um bom achado para a revisão de código assistida por IA.
 
 ---
 
