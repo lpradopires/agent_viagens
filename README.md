@@ -1,3 +1,9 @@
+
+
+
+
+https://github.com/user-attachments/assets/85036b42-b02a-4d66-99f6-b241c3a70526
+
 # Agente de Busca de Viagens Autónomo (GeckoAPI & Duffel)
 
 Este repositório contém a implementação completa de um **Agente Conversacional Inteligente** orquestrado pelo **LangGraph** em **TypeScript/Node.js**, com suporte para os modelos **OpenAI (ChatGPT gpt-4.1-nano)**, **Google Gemini (gemini-2.5-flash)** e **Groq**.
