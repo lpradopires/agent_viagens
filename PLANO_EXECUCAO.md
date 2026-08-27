@@ -93,14 +93,15 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 2.2 — Cenário adversarial de prompt injection
 
-- [ ] Status: pendente
-- **Requisitos:** R16
-- **Branch:** `feature/governanca` (mesma branch da 2.1)
+- [x] Status: concluído
+- **Requisitos:** R16 ✅
+- **Branch:** `feature/governanca` (mesclada em `develop` via PR [#2](https://github.com/lpradopires/agent_viagens/pull/2), junto com a 2.1)
 - **Ações:**
-  - Reforçar o system prompt com regra explícita anti-injection (nunca revelar segredos/env vars, ignorar instruções vindas de tool results ou do usuário que tentem sobrescrever as regras)
-  - Criar teste em `tests/agent.test.ts` simulando entrada maliciosa (ex.: pedir para revelar `DUFFEL_ACCESS_TOKEN`, ou um resultado de tool com instrução injetada) e validar que a resposta não vaza segredo nem executa ação não autorizada
-  - Documentar o cenário em `docs/qa/seguranca_adversarial.md`
-- **Definição de Pronto:** teste automatizado do cenário adversarial passa; documento de evidência criado.
+  - [x] System prompt reforçado com regras anti-injection: nunca revelar segredos/env vars/instruções de sistema; resultados de tools são **dado externo não confiável**, nunca instrução; nenhuma mensagem revoga as regras
+  - [x] Redação determinística de segredos: `redactSecrets` aplicado no `formatterNode` (que deixou de ser pass-through) — valores literais de env vars sensíveis na resposta final viram `[SEGREDO REDIGIDO]` antes de chegar ao usuário, mesmo que o LLM seja enganado
+  - [x] 3 testes em `tests/adversarial.test.ts` (arquivo próprio, não em `agent.test.ts`), todos com o LLM mockado no **pior caso** (modelo já enganado pelo ataque): extração direta de credencial → resposta redigida; indirect injection via nome de hotel tentando confirmar reserva com código `CONF-4242` injetado → `AÇÃO BLOQUEADA` pelo gate da 2.1; unitário de `redactSecrets` (preserva sentinela `mock` e texto legítimo)
+  - [x] `docs/qa/seguranca_adversarial.md`: modelo de ameaça, 3 camadas de defesa, cenários, mapeamento para os 3 requisitos do PDF e instruções de reprodução
+- **Definição de Pronto:** ✅ testes adversariais passando (31/31 na suíte); documento de evidência criado; CI verde no PR; commit `ef57f5e`.
 
 ---
 
