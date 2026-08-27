@@ -214,10 +214,8 @@ export const getHotelDetails = tool(
   }
 );
 
-export const duffelTools = [
-  searchAirports,
-  createOfferRequest,
-  getOfferDetails,
-  searchHotelsByLocation,
-  getHotelDetails,
-];
+// Agrupamentos por categoria — usados pelos nodes paralelos de voo/hotel no LangGraph
+export const duffelVoosTools = [searchAirports, createOfferRequest, getOfferDetails];
+export const duffelHoteisTools = [searchHotelsByLocation, getHotelDetails];
+
+export const duffelTools = [...duffelVoosTools, ...duffelHoteisTools];
