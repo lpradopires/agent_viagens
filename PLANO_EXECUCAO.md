@@ -14,6 +14,29 @@
 
 ---
 
+## Histórico retroativo no Kanban
+
+Além dos 16 cards das atividades futuras (Fases 0–9 abaixo), o Kanban recebeu **10 cards `HIST.*`** representando o que já foi implementado no mini-projeto antes deste plano existir — todos na coluna **Concluído**, cada um com descrição, objetivo, resultado obtido e commits/arquivos como evidência:
+
+| Card    | Tema (referência do PDF)                        | Commits principais                                       |
+| ------- | ----------------------------------------------- | -------------------------------------------------------- |
+| HIST.1  | Definição do problema, escopo e arquitetura     | `4c51185`, `c673e6c`, `3fab469`/`0c5c5ff`/`2332d96`      |
+| HIST.2  | Implementação do fluxo com LangGraph            | `490f1f2`, `953abe0`, `4893d80`, `c1e8766`               |
+| HIST.3  | Memória, contexto ou RAG (checkpointer)         | `490f1f2`                                                |
+| HIST.4  | Desenvolvimento da tool e integração (GeckoAPI) | `7dbf95f`, `9b16724`, `d0cde92`, `9e5d796`, `250d494`    |
+| HIST.5  | Desenvolvimento da tool e integração (Duffel)   | `53f3f65`, `5649123`                                     |
+| HIST.6  | Segurança e tratamento de entradas (parcial)    | `9e5d796`, `78af003`                                     |
+| HIST.7  | Análise de código e testes (Vitest)             | `91fcaef`, `00cf6ac`, `737e43d`                          |
+| HIST.8  | Configuração do pipeline (CI)                   | `91fcaef`                                                |
+| HIST.9  | Formato do sistema (interface web + API REST)   | `60832db`                                                |
+| HIST.10 | Documentação (README, prompts, walkthrough)     | `6bd2b23`, `1eecc36`, `5649123`, `9acf0b8`, entre outros |
+
+Cada card `HIST.*` também registra explicitamente **o que ainda falta** naquele tema (ex.: HIST.6 aponta que governança/prompt injection continuam pendentes nas atividades 2.1/2.2), garantindo coerência entre o histórico e o plano futuro.
+
+Board: https://github.com/users/lpradopires/projects/10/views/1
+
+---
+
 ## Fase 0 — Fundação de repositório e organização
 
 ### 0.1 — Criar estrutura de branches e pastas de documentação
