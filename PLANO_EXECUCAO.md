@@ -122,23 +122,27 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 3.2 — Investigar e documentar uma execução real
 
-- [ ] Status: pendente
-- **Requisitos:** R18
-- **Branch:** `feature/observabilidade` (mesma branch da 3.1)
+- [x] Status: concluído
+- **Requisitos:** R18 ✅
+- **Branch:** `feature/observabilidade` (mesclada via PR [#3](https://github.com/lpradopires/agent_viagens/pull/3))
 - **Ações:**
-  - Rodar um cenário real (ex.: busca combinada de voo+hotel) e reconstruir, usando os dois sinais, o fluxo completo (decisões, tools chamadas, erros, latência)
-  - Documentar em `docs/evidencias/observabilidade.md`
-- **Definição de Pronto:** documento com a reconstrução passo a passo de uma execução real, citando os logs/auditoria correspondentes.
+  - [x] Execução **real** (LLM OpenAI `gpt-4.1-nano` do `.env` + Duffel em modo mock local): fluxo principal voo+hotel SP→Rio e cenário de falha (data no passado) — script reproduzível em `scripts/evidencia_observabilidade.ts`
+  - [x] `docs/evidencias/observabilidade.md`: fluxo de 4 iterações reconstruído node a node (Sinal 1), decisões do modelo auditadas — escolha GRU/GIG, coordenadas autônomas, check-out calculado (Sinal 2), correlação por thread_id/timestamps, perfil de latência (LLM ≈7,5s vs tools <10ms), erro de validação barrado localmente (`duration_ms: 0`)
+  - [x] **Achado real da investigação:** contradição entre os sinais (auditoria `success` × filter `voos=0 hoteis=0`) confirmou em execução real o bug do `filterDataNode` com nomes Duffel — insumo registrado para as atividades 4.1 e 5.1
+- **Definição de Pronto:** ✅ documento com reconstrução passo a passo citando os JSONs reais dos dois sinais; commit `21f9e75`.
 
 ### 3.3 — Resiliência: retry limitado + fallback formalizados
 
-- [ ] Status: pendente
-- **Requisitos:** R19
-- **Branch:** `feature/observabilidade` (mesma branch)
+- [x] Status: concluído
+- **Requisitos:** R19 ✅
+- **Branch:** `feature/observabilidade` (mesclada via PR [#3](https://github.com/lpradopires/agent_viagens/pull/3))
 - **Ações:**
-  - Criar helper `withRetry()` (retry limitado com backoff curto) e aplicar em `GeckoApiClient` e `DuffelApiClient`
-  - Garantir fallback de mensagem amigável quando todas as tentativas falham
-- **Definição de Pronto:** teste comprova retry + fallback funcionando em cenário de falha simulada.
+  - [x] `src/retry.ts`: `withRetry` (2 tentativas extras, backoff exponencial) + `isTransientError` — retry só para falhas transitórias (rede, timeout/abort, 5xx, 429); 4xx/validação/MCP propagam imediatamente
+  - [x] `GeckoApiClient`: miolo HTTP em `withRetry`, timeout de 35s recriado por tentativa
+  - [x] `DuffelApiClient`: padrão fetch/ok/json dos 5 métodos unificado no helper `httpRequest` com retry
+  - [x] Fallback amigável preservado na camada de tools (mensagem legível após esgotar tentativas)
+  - [x] 7 testes em `tests/retry.test.ts` (unitários do helper + recuperação real nos dois clients + fallback na tool)
+- **Definição de Pronto:** ✅ testes comprovam retry + fallback em falha simulada; 42/42 verdes; commit `784be21`; CI verde no PR.
 
 ---
 
