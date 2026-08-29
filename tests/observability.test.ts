@@ -153,7 +153,8 @@ describe("Observabilidade: sinais correlacionados por thread_id", () => {
     expect(audit[0].detail).toContain("nao digitado pelo usuario");
   });
 
-  test("GET /api/debug/:thread_id expõe os dois sinais correlacionados", async () => {
+  test("GET /api/debug/:thread_id expõe os dois sinais correlacionados (autenticado)", async () => {
+    process.env.DEBUG_API_TOKEN = "token_de_teste";
     logNodeEvent({ thread_id: "web_debug_1", node: "agent", duration_ms: 12 });
     recordAudit({
       thread_id: "web_debug_1",
@@ -163,12 +164,15 @@ describe("Observabilidade: sinais correlacionados por thread_id", () => {
       duration_ms: 30,
     });
 
-    const res = await request(app).get("/api/debug/web_debug_1");
+    const res = await request(app)
+      .get("/api/debug/web_debug_1")
+      .set("x-debug-token", "token_de_teste");
     expect(res.status).toBe(200);
     expect(res.body.thread_id).toBe("web_debug_1");
     expect(res.body.execution_log.length).toBe(1);
     expect(res.body.execution_log[0].node).toBe("agent");
     expect(res.body.audit_trail.length).toBe(1);
     expect(res.body.audit_trail[0].tool).toBe("buscar_hoteis_trivago");
+    delete process.env.DEBUG_API_TOKEN;
   });
 });
