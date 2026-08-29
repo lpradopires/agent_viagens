@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { withRetry } from "./retry.js";
 
 dotenv.config();
 
@@ -60,55 +61,69 @@ export class GeckoApiClient {
       id: Math.floor(Math.random() * 1000000),
     };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 35000);
-
     try {
-      const response = await fetch(this.endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey}`,
+      // Retry limitado com backoff para falhas transitórias (rede, timeout, 5xx);
+      // erros de aplicação (4xx, MCP) são propagados sem nova tentativa.
+      // O timeout de 35s (AbortController) é criado POR TENTATIVA.
+      return await withRetry(
+        async () => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 35000);
+
+          try {
+            const response = await fetch(this.endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${this.apiKey}`,
+              },
+              body: JSON.stringify(payload),
+              signal: controller.signal,
+            });
+
+            if (!response.ok) {
+              throw new Error(
+                `Falha na requisição HTTP: ${response.status} ${response.statusText}`
+              );
+            }
+
+            const responseBody = (await response.json()) as JsonRpcResponse;
+
+            if (responseBody.error) {
+              throw new Error(
+                `Erro retornado pelo servidor MCP [Código ${responseBody.error.code}]: ${responseBody.error.message}`
+              );
+            }
+
+            if (!responseBody.result) {
+              throw new Error("Resposta inválida do servidor MCP: campo 'result' ausente.");
+            }
+
+            if (responseBody.result.isError) {
+              const errMsg =
+                responseBody.result.content?.[0]?.text ||
+                "Erro desconhecido na execução da ferramenta.";
+              throw new Error(`Erro na execução do raspador GeckoAPI (${toolName}): ${errMsg}`);
+            }
+
+            const contentText = responseBody.result.content?.[0]?.text;
+            if (!contentText) {
+              throw new Error("Nenhum dado retornado no campo de conteúdo do MCP.");
+            }
+
+            // Tenta fazer o parse do resultado como JSON se aplicável
+            try {
+              return JSON.parse(contentText) as T;
+            } catch {
+              // Se não for JSON, retorna a string bruta
+              return contentText as unknown as T;
+            }
+          } finally {
+            clearTimeout(timeoutId);
+          }
         },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Falha na requisição HTTP: ${response.status} ${response.statusText}`);
-      }
-
-      const responseBody = (await response.json()) as JsonRpcResponse;
-
-      if (responseBody.error) {
-        throw new Error(
-          `Erro retornado pelo servidor MCP [Código ${responseBody.error.code}]: ${responseBody.error.message}`
-        );
-      }
-
-      if (!responseBody.result) {
-        throw new Error("Resposta inválida do servidor MCP: campo 'result' ausente.");
-      }
-
-      if (responseBody.result.isError) {
-        const errMsg =
-          responseBody.result.content?.[0]?.text || "Erro desconhecido na execução da ferramenta.";
-        throw new Error(`Erro na execução do raspador GeckoAPI (${toolName}): ${errMsg}`);
-      }
-
-      const contentText = responseBody.result.content?.[0]?.text;
-      if (!contentText) {
-        throw new Error("Nenhum dado retornado no campo de conteúdo do MCP.");
-      }
-
-      // Tenta fazer o parse do resultado como JSON se aplicável
-      try {
-        return JSON.parse(contentText) as T;
-      } catch {
-        // Se não for JSON, retorna a string bruta
-        return contentText as unknown as T;
-      }
+        { retries: 2, baseDelayMs: 300 }
+      );
     } catch (err: any) {
       // Mascara a chave de API nos logs de erro
       const errorMsg = err.message.replace(this.apiKey, "GECKO_API_KEY_OMITTED");

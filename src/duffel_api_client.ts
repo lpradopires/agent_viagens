@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { withRetry } from "./retry.js";
 
 dotenv.config();
 
@@ -21,6 +22,22 @@ export class DuffelApiClient {
       "Duffel-Version": "v2",
       "Content-Type": "application/json",
     };
+  }
+
+  // Requisição HTTP com retry limitado e backoff para falhas transitórias
+  // (rede, timeout, 5xx, 429); erros 4xx são propagados sem nova tentativa.
+  private async httpRequest(url: string, init: { method: string; body?: string }): Promise<any> {
+    return withRetry(
+      async () => {
+        const response = await fetch(url, { ...init, headers: this.getHeaders() });
+        if (!response.ok) {
+          const errJson: any = await response.json().catch(() => ({}));
+          throw new Error(errJson.errors?.[0]?.message || `Erro HTTP: ${response.status}`);
+        }
+        return response.json();
+      },
+      { retries: 2, baseDelayMs: 300 }
+    );
   }
 
   // --- VOOS (Duffel Flights) ---
@@ -55,17 +72,7 @@ export class DuffelApiClient {
 
     try {
       const url = `${this.baseUrl}/places/suggestions?query=${encodeURIComponent(query)}`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: this.getHeaders(),
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.errors?.[0]?.message || `Erro HTTP: ${response.status}`);
-      }
-
-      const resJson = await response.json();
+      const resJson = await this.httpRequest(url, { method: "GET" });
       const suggestions = resJson.data || [];
       // Filtra apenas aeroportos
       return suggestions
@@ -143,9 +150,8 @@ export class DuffelApiClient {
 
     try {
       const url = `${this.baseUrl}/air/offer_requests`;
-      const response = await fetch(url, {
+      const resJson = await this.httpRequest(url, {
         method: "POST",
-        headers: this.getHeaders(),
         body: JSON.stringify({
           data: {
             slices: [
@@ -160,13 +166,6 @@ export class DuffelApiClient {
           },
         }),
       });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.errors?.[0]?.message || `Erro HTTP: ${response.status}`);
-      }
-
-      const resJson = await response.json();
       return resJson.data;
     } catch (err: any) {
       throw new Error(`Erro ao criar requisição de voo na Duffel: ${err.message}`);
@@ -201,17 +200,7 @@ export class DuffelApiClient {
 
     try {
       const url = `${this.baseUrl}/air/offers/${offerId}`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: this.getHeaders(),
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.errors?.[0]?.message || `Erro HTTP: ${response.status}`);
-      }
-
-      const resJson = await response.json();
+      const resJson = await this.httpRequest(url, { method: "GET" });
       return resJson.data;
     } catch (err: any) {
       throw new Error(`Erro ao obter detalhes do voo na Duffel: ${err.message}`);
@@ -255,9 +244,8 @@ export class DuffelApiClient {
 
     try {
       const url = `${this.baseUrl}/stays/search`;
-      const response = await fetch(url, {
+      const resJson = await this.httpRequest(url, {
         method: "POST",
-        headers: this.getHeaders(),
         body: JSON.stringify({
           data: {
             location: {
@@ -271,13 +259,6 @@ export class DuffelApiClient {
           },
         }),
       });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.errors?.[0]?.message || `Erro HTTP: ${response.status}`);
-      }
-
-      const resJson = await response.json();
       const properties = resJson.data?.results || resJson.data || [];
       return properties.map((p: any) => ({
         id: p.id,
@@ -308,17 +289,7 @@ export class DuffelApiClient {
 
     try {
       const url = `${this.baseUrl}/stays/hotels/${hotelId}`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: this.getHeaders(),
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.errors?.[0]?.message || `Erro HTTP: ${response.status}`);
-      }
-
-      const resJson = await response.json();
+      const resJson = await this.httpRequest(url, { method: "GET" });
       return resJson.data;
     } catch (err: any) {
       throw new Error(`Erro ao obter detalhes do hotel na Duffel: ${err.message}`);
