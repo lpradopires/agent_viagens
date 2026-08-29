@@ -1,0 +1,188 @@
+{
+  "name": "Monitor de Precos de Viagem",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Gatilho Diario 09h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-460, 100]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "monitor-precos",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Gatilho Manual (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-460, 300],
+      "webhookId": "monitor-precos"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "consulta",
+              "value": "Quero um voo de Sao Paulo (GRU) para o Rio de Janeiro (GIG) daqui a 30 dias. Liste as opcoes com os precos.",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "limitePreco",
+              "value": 600,
+              "type": "number"
+            },
+            {
+              "id": "p3",
+              "name": "urlBase",
+              "value": "http://localhost:3000",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Parametros do Monitor",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-240, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.urlBase }}/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.consulta, thread_id: 'n8n_monitor_' + $now.toMillis() }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Consultar Agente de Viagens",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-20, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://localhost:3000/api/monitor/avaliar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ resposta: $json.reply, limite: $('Parametros do Monitor').item.json.limitePreco }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Avaliar Precos (logica na app)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.deveAlertar }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "Preco abaixo do limite?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [420, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://localhost:3000/api/alertas",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ origem: 'n8n:monitor-precos', tipo: 'preco_abaixo_do_limite', titulo: 'Passagem GRU->GIG por R$ ' + $json.precoMinimo, detalhe: 'O menor preco encontrado (R$ ' + $json.precoMinimo + ') ficou abaixo do limite de R$ ' + $json.limite + '.', dados: { precoMinimo: $json.precoMinimo, limite: $json.limite, precosEncontrados: $json.precosEncontrados } }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "Registrar Alerta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://localhost:3000/api/alertas",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ origem: 'n8n:monitor-precos', tipo: 'sem_oportunidade', titulo: 'Nenhuma passagem abaixo do limite', detalhe: 'Menor preco encontrado: R$ ' + ($json.precoMinimo ?? 'n/d') + ' (limite R$ ' + $json.limite + ').', dados: { precoMinimo: $json.precoMinimo, limite: $json.limite } }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Registrar Execucao Sem Alerta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300]
+    }
+  ],
+  "connections": {
+    "Gatilho Diario 09h": {
+      "main": [[{ "node": "Parametros do Monitor", "type": "main", "index": 0 }]]
+    },
+    "Gatilho Manual (Webhook)": {
+      "main": [[{ "node": "Parametros do Monitor", "type": "main", "index": 0 }]]
+    },
+    "Parametros do Monitor": {
+      "main": [[{ "node": "Consultar Agente de Viagens", "type": "main", "index": 0 }]]
+    },
+    "Consultar Agente de Viagens": {
+      "main": [[{ "node": "Avaliar Precos (logica na app)", "type": "main", "index": 0 }]]
+    },
+    "Avaliar Precos (logica na app)": {
+      "main": [[{ "node": "Preco abaixo do limite?", "type": "main", "index": 0 }]]
+    },
+    "Preco abaixo do limite?": {
+      "main": [
+        [{ "node": "Registrar Alerta", "type": "main", "index": 0 }],
+        [{ "node": "Registrar Execucao Sem Alerta", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
