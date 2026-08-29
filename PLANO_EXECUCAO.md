@@ -109,14 +109,16 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 3.1 — Logs estruturados + segundo sinal correlacionado (auditoria)
 
-- [ ] Status: pendente
-- **Requisitos:** R17, R18
+- [x] Status: concluído
+- **Requisitos:** R17 ✅ (R18 completa-se na 3.2)
 - **Branch:** `feature/observabilidade`
 - **Ações:**
-  - Adicionar logging estruturado (JSON por linha) em cada node do grafo: `thread_id`, `node`, `timestamp`, `duration_ms`, `tool_calls`, `error`
-  - Adicionar um segundo sinal correlacionado: registro de auditoria por chamada de tool (nome, parâmetros, sucesso/erro, latência), correlacionado pelo mesmo `thread_id`
-  - Expor uma forma simples de consulta (ex.: `GET /api/debug/:thread_id` no `server.ts`, ou arquivo `logs/audit.jsonl`)
-- **Definição de Pronto:** os dois sinais existem e são correlacionáveis pelo `thread_id` em uma execução real.
+  - [x] Módulo `src/observability.ts`: `logNodeEvent` (JSON por linha: `thread_id`, `node`, `timestamp`, `duration_ms`, `tool_calls`, `detail`, `error`) — todos os 6 nodes do grafo instrumentados, incluindo fallback de LLM e erros
+  - [x] Segundo sinal: `recordAudit` por chamada de tool (nome, args, status `success|error|blocked`, latência), mesmo `thread_id` — os bloqueios do gate de aprovação humana entram como `blocked` (trilha auditável de governança)
+  - [x] Buffer em memória + espelho JSONL (`logs/agent.jsonl`, `logs/audit.jsonl`, desativado em NODE_ENV=test; `logs/` no `.gitignore`); falha de escrita de log nunca derruba a aplicação
+  - [x] Consulta: `GET /api/debug/:thread_id` no `server.ts` retorna `execution_log` + `audit_trail` da sessão
+  - [x] 4 testes em `tests/observability.test.ts` + smoke test manual do sink de arquivo
+- **Definição de Pronto:** ✅ dois sinais correlacionáveis pelo `thread_id` em execução real; 35/35 testes verdes; commit `bdd78bd`.
 
 ### 3.2 — Investigar e documentar uma execução real
 

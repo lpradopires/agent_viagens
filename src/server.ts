@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import { HumanMessage } from "@langchain/core/messages";
 import { travelAgentGraph } from "./agent.js";
+import { getExecutionLog, getAuditTrail } from "./observability.js";
 
 dotenv.config();
 
@@ -53,6 +54,17 @@ app.get("/api/config", (_req, res) => {
           : process.env.GROQ_API_KEY
             ? "Groq Llama 3.1"
             : "Nenhum",
+  });
+});
+
+// Observabilidade: consulta dos dois sinais correlacionados de uma sessão
+// (log estruturado de execução por node + trilha de auditoria de tools)
+app.get("/api/debug/:thread_id", (req, res) => {
+  const { thread_id } = req.params;
+  res.json({
+    thread_id,
+    execution_log: getExecutionLog(thread_id),
+    audit_trail: getAuditTrail(thread_id),
   });
 });
 

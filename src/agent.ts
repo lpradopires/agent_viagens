@@ -6,6 +6,7 @@ import { ChatOpenAI } from "@langchain/openai";
 import { travelTools, travelVoosTools, travelHoteisTools } from "./tools.js";
 import { duffelTools, duffelVoosTools, duffelHoteisTools } from "./duffel_tools.js";
 import { reservationTools } from "./reservation_tools.js";
+import { logNodeEvent, recordAudit } from "./observability.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -171,12 +172,18 @@ ${GOVERNANCE_RULES}`;
 
 // 3. Implementação dos Nós (Nodes)
 
+// Extrai o thread_id da configuração de execução do LangGraph (correlação dos sinais)
+const getThreadId = (config: any): string => config?.configurable?.thread_id ?? "sem_thread";
+
 // Nó do Agente (LLM)
-const agentNode = async (state: typeof StateAnnotation.State) => {
+const agentNode = async (state: typeof StateAnnotation.State, config: any) => {
+  const startedAt = Date.now();
+  const threadId = getThreadId(config);
   const systemPrompt = getSystemPrompt();
   const messagesWithSystem = [new SystemMessage(systemPrompt), ...state.messages];
 
   let response;
+  let usedFallback = false;
   try {
     const modelWithTools = getModel().bindTools(getActiveTools());
     response = await modelWithTools.invoke(messagesWithSystem);
@@ -208,15 +215,36 @@ const agentNode = async (state: typeof StateAnnotation.State) => {
           temperature: 0.2,
         }).bindTools(getActiveTools());
         response = await fallbackModel.invoke(messagesWithSystem);
+        usedFallback = true;
       } catch (fallbackErr: any) {
+        logNodeEvent({
+          thread_id: threadId,
+          node: "agent",
+          duration_ms: Date.now() - startedAt,
+          error: `Falha na LLM primária e no fallback: ${fallbackErr.message}`,
+        });
         throw new Error(
           `Falha na LLM primária (${err.message}) e também no Fallback OpenRouter (${fallbackErr.message})`
         );
       }
     } else {
+      logNodeEvent({
+        thread_id: threadId,
+        node: "agent",
+        duration_ms: Date.now() - startedAt,
+        error: err.message,
+      });
       throw err;
     }
   }
+
+  logNodeEvent({
+    thread_id: threadId,
+    node: "agent",
+    duration_ms: Date.now() - startedAt,
+    tool_calls: ((response as any).tool_calls ?? []).map((c: any) => c.name),
+    detail: usedFallback ? "fallback OpenRouter acionado" : undefined,
+  });
 
   return {
     messages: [response],
@@ -256,7 +284,8 @@ function cleanObject(obj: any): any {
 }
 
 // Nó de Filtragem de Dados (Token Reducer)
-const filterDataNode = (state: typeof StateAnnotation.State) => {
+const filterDataNode = (state: typeof StateAnnotation.State, config: any) => {
+  const startedAt = Date.now();
   const flightResults: any[] = [];
   const hotelResults: any[] = [];
 
@@ -287,6 +316,13 @@ const filterDataNode = (state: typeof StateAnnotation.State) => {
       }
     }
   }
+
+  logNodeEvent({
+    thread_id: getThreadId(config),
+    node: "filter",
+    duration_ms: Date.now() - startedAt,
+    detail: `voos=${flightResults.length} hoteis=${hotelResults.length}`,
+  });
 
   // Retorna apenas as atualizações para as listas específicas do estado
   return {
@@ -322,25 +358,39 @@ export function redactSecrets(text: string): string {
 
 // Nó do Formatter: última barreira determinística antes da resposta ao usuário —
 // aplica a redação de segredos sobre o texto final gerado pelo modelo.
-const formatterNode = (state: typeof StateAnnotation.State) => {
+const formatterNode = (state: typeof StateAnnotation.State, config: any) => {
+  const startedAt = Date.now();
+  let redigido = false;
   const lastMessage = state.messages[state.messages.length - 1];
   if (lastMessage && typeof lastMessage.content === "string") {
     const redacted = redactSecrets(lastMessage.content);
     if (redacted !== lastMessage.content) {
       // Atualiza o conteúdo por referência (in-place), mesmo padrão do filterDataNode
       lastMessage.content = redacted;
+      redigido = true;
     }
   }
+  logNodeEvent({
+    thread_id: getThreadId(config),
+    node: "formatter",
+    duration_ms: Date.now() - startedAt,
+    detail: redigido ? "segredo redigido na resposta final" : undefined,
+  });
   return {};
 };
 
 // Executa, em paralelo (Promise.all), apenas as tool_calls cujo nome pertence
 // à categoria (mapa) recebida — ignora silenciosamente as demais, pois elas
 // são de responsabilidade do outro node paralelo (voo ou hotel).
+// Cada chamada de tool gera um registro de auditoria correlacionado por thread_id.
 async function runToolsForCategory(
   state: typeof StateAnnotation.State,
-  toolsByName: Map<string, any>
+  toolsByName: Map<string, any>,
+  nodeName: string,
+  config: any
 ) {
+  const nodeStartedAt = Date.now();
+  const threadId = getThreadId(config);
   const lastMessage = state.messages[state.messages.length - 1] as any;
   const toolCalls: Array<{ name: string; args: any; id?: string }> = lastMessage?.tool_calls ?? [];
   const relevantCalls = toolCalls.filter((call) => toolsByName.has(call.name));
@@ -352,15 +402,32 @@ async function runToolsForCategory(
   const results = await Promise.all(
     relevantCalls.map(async (call) => {
       const tool = toolsByName.get(call.name);
+      const toolStartedAt = Date.now();
       try {
         const output = await tool.invoke(call.args);
+        const content = typeof output === "string" ? output : JSON.stringify(output);
+        recordAudit({
+          thread_id: threadId,
+          tool: call.name,
+          args: call.args,
+          status: content.startsWith("Erro") ? "error" : "success",
+          duration_ms: Date.now() - toolStartedAt,
+        });
         return new ToolMessage({
           status: "success",
           name: call.name,
-          content: typeof output === "string" ? output : JSON.stringify(output),
+          content,
           tool_call_id: call.id ?? "",
         });
       } catch (err: any) {
+        recordAudit({
+          thread_id: threadId,
+          tool: call.name,
+          args: call.args,
+          status: "error",
+          duration_ms: Date.now() - toolStartedAt,
+          detail: err.message,
+        });
         return new ToolMessage({
           status: "error",
           name: call.name,
@@ -371,23 +438,32 @@ async function runToolsForCategory(
     })
   );
 
+  logNodeEvent({
+    thread_id: threadId,
+    node: nodeName,
+    duration_ms: Date.now() - nodeStartedAt,
+    tool_calls: relevantCalls.map((c) => c.name),
+  });
+
   return { messages: results };
 }
 
 // Node paralelo: executa apenas as tool_calls de busca de voos (Gecko ou Duffel)
-const toolsVoosNode = (state: typeof StateAnnotation.State) =>
-  runToolsForCategory(state, voosToolsByName);
+const toolsVoosNode = (state: typeof StateAnnotation.State, config: any) =>
+  runToolsForCategory(state, voosToolsByName, "tools_voos", config);
 
 // Node paralelo: executa apenas as tool_calls de busca de hotéis (Gecko ou Duffel)
-const toolsHoteisNode = (state: typeof StateAnnotation.State) =>
-  runToolsForCategory(state, hoteisToolsByName);
+const toolsHoteisNode = (state: typeof StateAnnotation.State, config: any) =>
+  runToolsForCategory(state, hoteisToolsByName, "tools_hoteis", config);
 
 // Node de governança: executa a tool de reserva com um gate DETERMINÍSTICO de
 // aprovação humana — a confirmação só é aceita se o código de aprovação estiver
 // literalmente presente na ÚLTIMA mensagem digitada pelo usuário. Isso impede
 // que o próprio modelo "se auto-aprove" inventando ou repassando um código que
 // o humano nunca digitou (limite de autonomia imposto pela aplicação, não pelo LLM).
-const toolsReservaNode = async (state: typeof StateAnnotation.State) => {
+const toolsReservaNode = async (state: typeof StateAnnotation.State, config: any) => {
+  const nodeStartedAt = Date.now();
+  const threadId = getThreadId(config);
   const lastMessage = state.messages[state.messages.length - 1] as any;
   const toolCalls: Array<{ name: string; args: any; id?: string }> = lastMessage?.tool_calls ?? [];
   const relevantCalls = toolCalls.filter((call) => reservaToolsByName.has(call.name));
@@ -401,12 +477,22 @@ const toolsReservaNode = async (state: typeof StateAnnotation.State) => {
 
   const results = await Promise.all(
     relevantCalls.map(async (call) => {
+      const toolStartedAt = Date.now();
       const codigo = call.args?.codigo_confirmacao
         ? String(call.args.codigo_confirmacao).toUpperCase()
         : undefined;
 
-      // Gate determinístico: o código precisa ter sido digitado pelo humano
+      // Gate determinístico: o código precisa ter sido digitado pelo humano.
+      // Decisões de bloqueio entram na trilha de auditoria (governança).
       if (codigo && !lastHumanText.includes(codigo)) {
+        recordAudit({
+          thread_id: threadId,
+          tool: call.name,
+          args: call.args,
+          status: "blocked",
+          duration_ms: Date.now() - toolStartedAt,
+          detail: "codigo de confirmacao nao digitado pelo usuario na ultima mensagem",
+        });
         return new ToolMessage({
           status: "error",
           name: call.name,
@@ -418,6 +504,14 @@ const toolsReservaNode = async (state: typeof StateAnnotation.State) => {
       const tool = reservaToolsByName.get(call.name);
       try {
         const output = await tool.invoke(call.args);
+        recordAudit({
+          thread_id: threadId,
+          tool: call.name,
+          args: call.args,
+          status: "success",
+          duration_ms: Date.now() - toolStartedAt,
+          detail: codigo ? "reserva confirmada com aprovacao humana" : "pendencia registrada",
+        });
         return new ToolMessage({
           status: "success",
           name: call.name,
@@ -425,6 +519,14 @@ const toolsReservaNode = async (state: typeof StateAnnotation.State) => {
           tool_call_id: call.id ?? "",
         });
       } catch (err: any) {
+        recordAudit({
+          thread_id: threadId,
+          tool: call.name,
+          args: call.args,
+          status: "error",
+          duration_ms: Date.now() - toolStartedAt,
+          detail: err.message,
+        });
         return new ToolMessage({
           status: "error",
           name: call.name,
@@ -434,6 +536,13 @@ const toolsReservaNode = async (state: typeof StateAnnotation.State) => {
       }
     })
   );
+
+  logNodeEvent({
+    thread_id: threadId,
+    node: "tools_reserva",
+    duration_ms: Date.now() - nodeStartedAt,
+    tool_calls: relevantCalls.map((c) => c.name),
+  });
 
   return { messages: results };
 };
