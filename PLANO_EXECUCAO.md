@@ -182,16 +182,18 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 5.1 — IA explicando logs do CI + detecção de anomalia + tendência de risco
 
-- [ ] Status: pendente
-- **Requisitos:** R24, R25, R26, R27
-- **Branch:** `feature/devops-anomalias`
+- [x] Status: concluído
+- **Requisitos:** R24, R25, R26, R27 ✅
+- **Branch:** `feature/devops-anomalias` (mesclada via PR [#5](https://github.com/lpradopires/agent_viagens/pull/5))
+- **Arquitetura da solução:** duas camadas com separação deliberada — `src/ci_analysis.ts` (**determinística**: estatísticas, anomalias por limiar, correlação de Pearson, regressão; 18 testes) e `scripts/analise_ci.ts` (**IA**: lê os logs brutos, explica em linguagem natural, interpreta anomalias). O LLM não calcula os indicadores, apenas os interpreta — a evidência não depende de aritmética alucinada.
 - **Ações:**
-  - Capturar logs de pelo menos duas etapas do CI (ex.: `lint` e `test`)
-  - Produzir, com apoio de IA, uma explicação em linguagem natural dos logs
-  - Detectar/explicar uma anomalia real ou simulada (erro recorrente, latência alta, falha de tool)
-  - Produzir uma estimativa simples de tendência/risco de falha (heurística baseada em execuções recentes)
-  - Documentar tudo com evidências em `docs/evidencias/devops_analise_logs.md`
-- **Definição de Pronto:** documento com logs de 2+ etapas, anomalia explicada e estimativa de risco justificada.
+  - [x] Coleta real de 12 execuções do CI (Fases 1–4) via `gh` CLI, com duração por etapa
+  - [x] **R24** — IA explicou os logs de duas etapas (`Run Linter` e `Run Tests`), extraindo números verificáveis contra o log original (10 arquivos, 53 testes, 4,22 s)
+  - [x] **R25** — três anomalias detectadas e explicadas: tendência de +60% em `Run Tests` (ALTA); outlier de 2,4 desvios no `Run Build` (MÉDIA, avaliado criticamente como **falso-positivo** do z-score em série de baixa variância); e o **ponto cego histórico do pipeline** — o CI só disparava em `main` até 27/08, e foi por isso que 8 testes quebrados por datas fixas passaram despercebidos até a atividade 1.1 (commits `8785ce3` e `a2f39f4`)
+  - [x] **R26** — score de risco 20/100 (BAIXO) com cada fator e limiar explicitados
+  - [x] **R27** — a IA levantou três hipóteses para a tendência sem distinguir entre elas; a causa foi **validada quantitativamente** cruzando a duração com o tamanho da suíte extraído dos próprios logs (24→31→42→53 testes): **Pearson r = 0,913**, custo marginal estável em 0,0766 s/teste e demais etapas planas ou em queda — confirma crescimento da suíte, não degradação. Projeção: 100 testes → ~8 s
+  - [x] `docs/evidencias/devops_analise_logs.md` + saída bruta da execução real
+- **Definição de Pronto:** ✅ logs de 2 etapas explicados pela IA, anomalias explicadas, estimativa de risco justificada com evidência quantitativa; suíte 53 → **71** testes; CI verde.
 
 ---
 
