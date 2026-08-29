@@ -30,6 +30,11 @@ export interface JsonRpcResponse {
   };
 }
 
+/** Timeout de cada tentativa HTTP isolada */
+const ATTEMPT_TIMEOUT_MS = 15000;
+/** Teto de tempo para o conjunto de tentativas de uma mesma chamada de tool */
+const TOTAL_BUDGET_MS = 40000;
+
 export class GeckoApiClient {
   private apiKey: string;
   private endpoint: string;
@@ -64,11 +69,14 @@ export class GeckoApiClient {
     try {
       // Retry limitado com backoff para falhas transitórias (rede, timeout, 5xx);
       // erros de aplicação (4xx, MCP) são propagados sem nova tentativa.
-      // O timeout de 35s (AbortController) é criado POR TENTATIVA.
+      //
+      // O timeout do AbortController é POR TENTATIVA; por isso ele é menor que
+      // o antigo (35s) e há um teto de tempo total: um upstream travado custa
+      // no máximo ~ATTEMPT_TIMEOUT_MS × tentativas, não 3×35s.
       return await withRetry(
         async () => {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 35000);
+          const timeoutId = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
 
           try {
             const response = await fetch(this.endpoint, {
@@ -122,7 +130,7 @@ export class GeckoApiClient {
             clearTimeout(timeoutId);
           }
         },
-        { retries: 2, baseDelayMs: 300 }
+        { retries: 2, baseDelayMs: 300, totalBudgetMs: TOTAL_BUDGET_MS }
       );
     } catch (err: any) {
       // Mascara a chave de API nos logs de erro

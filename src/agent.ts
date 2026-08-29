@@ -5,13 +5,12 @@ import { ChatGroq } from "@langchain/groq";
 import { ChatOpenAI } from "@langchain/openai";
 import { travelTools, travelVoosTools, travelHoteisTools } from "./tools.js";
 import { duffelTools, duffelVoosTools, duffelHoteisTools } from "./duffel_tools.js";
-import { reservationTools } from "./reservation_tools.js";
+import { reservationTools, executarReserva } from "./reservation_tools.js";
 import { logNodeEvent, recordAudit } from "./observability.js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-export const activeTools = [...travelTools, ...duffelTools, ...reservationTools];
 export const getActiveTools = () => {
   const providerTools =
     process.env.TRAVEL_API_PROVIDER?.toLowerCase() === "duffel" ? duffelTools : travelTools;
@@ -302,9 +301,12 @@ const filterDataNode = (state: typeof StateAnnotation.State, config: any) => {
           // Limpa recursivamente chaves longas e inúteis (URLs, imagens, descrições)
           const cleaned = cleanObject(topResults);
 
-          if (msg.name?.includes("voos")) {
+          // Categoriza pelo mapa de tools de cada provedor (não pelo nome conter
+          // "voos"/"hoteis", que só valia para a nomenclatura da GeckoAPI e
+          // deixava os resultados da Duffel fora do estado).
+          if (msg.name && voosToolsByName.has(msg.name)) {
             flightResults.push(...cleaned);
-          } else if (msg.name?.includes("hoteis")) {
+          } else if (msg.name && hoteisToolsByName.has(msg.name)) {
             hotelResults.push(...cleaned);
           }
 
@@ -356,17 +358,45 @@ export function redactSecrets(text: string): string {
   return result;
 }
 
+// Redige segredos em qualquer formato de conteúdo de mensagem: string simples
+// ou lista de blocos (ex.: [{type:"text", text:"..."}]), usada por vários
+// provedores de LLM. Sem isso, uma resposta em blocos escaparia da redação.
+export function redactMessageContent(content: any): { content: any; redigido: boolean } {
+  if (typeof content === "string") {
+    const redacted = redactSecrets(content);
+    return { content: redacted, redigido: redacted !== content };
+  }
+  if (Array.isArray(content)) {
+    let redigido = false;
+    const blocos = content.map((bloco) => {
+      if (typeof bloco === "string") {
+        const redacted = redactSecrets(bloco);
+        if (redacted !== bloco) redigido = true;
+        return redacted;
+      }
+      if (bloco && typeof bloco === "object" && typeof bloco.text === "string") {
+        const redacted = redactSecrets(bloco.text);
+        if (redacted !== bloco.text) redigido = true;
+        return { ...bloco, text: redacted };
+      }
+      return bloco;
+    });
+    return { content: blocos, redigido };
+  }
+  return { content, redigido: false };
+}
+
 // Nó do Formatter: última barreira determinística antes da resposta ao usuário —
-// aplica a redação de segredos sobre o texto final gerado pelo modelo.
+// aplica a redação de segredos sobre o conteúdo final gerado pelo modelo.
 const formatterNode = (state: typeof StateAnnotation.State, config: any) => {
   const startedAt = Date.now();
   let redigido = false;
   const lastMessage = state.messages[state.messages.length - 1];
-  if (lastMessage && typeof lastMessage.content === "string") {
-    const redacted = redactSecrets(lastMessage.content);
-    if (redacted !== lastMessage.content) {
+  if (lastMessage) {
+    const resultado = redactMessageContent(lastMessage.content);
+    if (resultado.redigido) {
       // Atualiza o conteúdo por referência (in-place), mesmo padrão do filterDataNode
-      lastMessage.content = redacted;
+      lastMessage.content = resultado.content;
       redigido = true;
     }
   }
@@ -461,6 +491,15 @@ const toolsHoteisNode = (state: typeof StateAnnotation.State, config: any) =>
 // literalmente presente na ÚLTIMA mensagem digitada pelo usuário. Isso impede
 // que o próprio modelo "se auto-aprove" inventando ou repassando um código que
 // o humano nunca digitou (limite de autonomia imposto pela aplicação, não pelo LLM).
+
+// Termos que indicam recusa/cancelamento na mensagem do usuário. Usado como
+// fail-safe: mesmo com o código presente, uma mensagem de recusa bloqueia a ação.
+const TERMOS_DE_RECUSA =
+  /\b(NAO|NÃO|CANCEL|CANCELE|CANCELAR|DESIST|PARE|PARAR|ABORT|ESQUE[CÇ]|NEM PENSAR|DEIXA PRA LA|DEIXA PRA LÁ)/;
+
+export function contemRecusa(texto: string): boolean {
+  return TERMOS_DE_RECUSA.test(texto.toUpperCase());
+}
 const toolsReservaNode = async (state: typeof StateAnnotation.State, config: any) => {
   const nodeStartedAt = Date.now();
   const threadId = getThreadId(config);
@@ -501,9 +540,27 @@ const toolsReservaNode = async (state: typeof StateAnnotation.State, config: any
         });
       }
 
-      const tool = reservaToolsByName.get(call.name);
+      // Fail-safe: a presença do código não basta se a mensagem do usuário for
+      // uma recusa ("não use o código CONF-X", "cancele"). Na dúvida, bloqueia.
+      if (codigo && contemRecusa(lastHumanText)) {
+        recordAudit({
+          thread_id: threadId,
+          tool: call.name,
+          args: call.args,
+          status: "blocked",
+          duration_ms: Date.now() - toolStartedAt,
+          detail: "mensagem do usuario indica recusa/cancelamento da reserva",
+        });
+        return new ToolMessage({
+          status: "error",
+          name: call.name,
+          content: `AÇÃO BLOQUEADA: a última mensagem do usuário indica recusa ou cancelamento, e não uma aprovação. A reserva NÃO foi executada. Pergunte explicitamente ao usuário se ele deseja confirmar.`,
+          tool_call_id: call.id ?? "",
+        });
+      }
+
       try {
-        const output = await tool.invoke(call.args);
+        const output = await executarReserva(call.args, threadId);
         recordAudit({
           thread_id: threadId,
           tool: call.name,
@@ -547,6 +604,55 @@ const toolsReservaNode = async (state: typeof StateAnnotation.State, config: any
   return { messages: results };
 };
 
+// Toda tool_call precisa de uma ToolMessage correspondente: se o modelo
+// alucinar um nome de ferramenta inexistente, deixar a chamada sem resposta
+// corromperia o histórico persistido no checkpointer — os provedores rejeitam
+// (HTTP 400) um histórico com tool_call órfã, inutilizando a sessão para sempre.
+const isKnownTool = (name: string) =>
+  voosToolsByName.has(name) || hoteisToolsByName.has(name) || reservaToolsByName.has(name);
+
+const toolsDesconhecidaNode = (state: typeof StateAnnotation.State, config: any) => {
+  const startedAt = Date.now();
+  const threadId = getThreadId(config);
+  const lastMessage = state.messages[state.messages.length - 1] as any;
+  const toolCalls: Array<{ name: string; args: any; id?: string }> = lastMessage?.tool_calls ?? [];
+  const orfas = toolCalls.filter((call) => !isKnownTool(call.name));
+
+  if (orfas.length === 0) {
+    return { messages: [] };
+  }
+
+  const results = orfas.map((call) => {
+    recordAudit({
+      thread_id: threadId,
+      tool: call.name,
+      args: call.args,
+      status: "error",
+      duration_ms: 0,
+      detail: "ferramenta inexistente solicitada pelo modelo",
+    });
+    return new ToolMessage({
+      status: "error",
+      name: call.name,
+      content: `Erro: a ferramenta "${call.name}" não existe. Ferramentas disponíveis: ${[
+        ...voosToolsByName.keys(),
+        ...hoteisToolsByName.keys(),
+        ...reservaToolsByName.keys(),
+      ].join(", ")}. Utilize apenas as ferramentas disponíveis.`,
+      tool_call_id: call.id ?? "",
+    });
+  });
+
+  logNodeEvent({
+    thread_id: threadId,
+    node: "tools_desconhecida",
+    duration_ms: Date.now() - startedAt,
+    tool_calls: orfas.map((c) => c.name),
+  });
+
+  return { messages: results };
+};
+
 // 4. Lógica de Roteamento Dinâmico (Router Edge)
 // Retorna uma LISTA de destinos: quando o modelo solicita voo e hotel na mesma
 // resposta, o grafo faz fan-out para os dois nodes simultaneamente (paralelização
@@ -562,11 +668,13 @@ const routeAgent = (state: typeof StateAnnotation.State): string[] => {
   const destinations = new Set<string>();
   for (const call of toolCalls) {
     if (voosToolsByName.has(call.name)) destinations.add("tools_voos");
-    if (hoteisToolsByName.has(call.name)) destinations.add("tools_hoteis");
-    if (reservaToolsByName.has(call.name)) destinations.add("tools_reserva");
+    else if (hoteisToolsByName.has(call.name)) destinations.add("tools_hoteis");
+    else if (reservaToolsByName.has(call.name)) destinations.add("tools_reserva");
+    // Nome desconhecido: precisa de resposta, senão a tool_call fica órfã
+    else destinations.add("tools_desconhecida");
   }
 
-  return destinations.size > 0 ? Array.from(destinations) : ["formatter"];
+  return Array.from(destinations);
 };
 
 // 5. Construção e Conexão do Grafo
@@ -575,6 +683,7 @@ const workflow = new StateGraph(StateAnnotation)
   .addNode("tools_voos", toolsVoosNode)
   .addNode("tools_hoteis", toolsHoteisNode)
   .addNode("tools_reserva", toolsReservaNode)
+  .addNode("tools_desconhecida", toolsDesconhecidaNode)
   .addNode("filter", filterDataNode)
   .addNode("formatter", formatterNode);
 
@@ -586,6 +695,7 @@ workflow.addConditionalEdges("agent", routeAgent, {
   tools_voos: "tools_voos",
   tools_hoteis: "tools_hoteis",
   tools_reserva: "tools_reserva",
+  tools_desconhecida: "tools_desconhecida",
   formatter: "formatter",
 });
 
@@ -593,6 +703,7 @@ workflow.addConditionalEdges("agent", routeAgent, {
 workflow.addEdge("tools_voos", "filter");
 workflow.addEdge("tools_hoteis", "filter");
 workflow.addEdge("tools_reserva", "filter");
+workflow.addEdge("tools_desconhecida", "filter");
 workflow.addEdge("filter", "agent");
 
 // Finalização

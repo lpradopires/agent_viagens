@@ -58,8 +58,23 @@ app.get("/api/config", (_req, res) => {
 });
 
 // Observabilidade: consulta dos dois sinais correlacionados de uma sessão
-// (log estruturado de execução por node + trilha de auditoria de tools)
+// (log estruturado de execução por node + trilha de auditoria de tools).
+//
+// Os sinais expõem parâmetros de ferramentas (incl. códigos de confirmação),
+// e thread_ids são previsíveis o bastante para enumeração — o endpoint é
+// fail-closed: sem DEBUG_API_TOKEN configurado ele não existe, e com token
+// configurado exige o header x-debug-token.
 app.get("/api/debug/:thread_id", (req, res) => {
+  const expectedToken = process.env.DEBUG_API_TOKEN;
+  if (!expectedToken) {
+    res.status(404).json({ error: "Endpoint de depuração desabilitado." });
+    return;
+  }
+  if (req.get("x-debug-token") !== expectedToken) {
+    res.status(401).json({ error: "Token de depuração inválido ou ausente." });
+    return;
+  }
+
   const { thread_id } = req.params;
   res.json({
     thread_id,

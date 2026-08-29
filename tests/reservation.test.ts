@@ -35,7 +35,7 @@ describe("Governança: reserva simulada com aprovação humana", () => {
 
     expect(resposta).toContain("APROVAÇÃO HUMANA NECESSÁRIA");
     expect(resposta).toContain("NÃO foi executada");
-    expect(resposta).toMatch(/CONF-\d{4}/);
+    expect(resposta).toMatch(/CONF-[0-9A-F]+/);
     expect(pendingReservations.size).toBe(1);
   });
 
@@ -76,7 +76,7 @@ describe("Governança: reserva simulada com aprovação humana", () => {
 
     const toolMsg1: any = turno1.messages.find((m) => m.getType() === "tool");
     expect(toolMsg1.content).toContain("APROVAÇÃO HUMANA NECESSÁRIA");
-    const codigo = String(toolMsg1.content).match(/CONF-\d{4}/)?.[0];
+    const codigo = String(toolMsg1.content).match(/CONF-[0-9A-F]+/)?.[0];
     expect(codigo).toBeDefined();
 
     // ---- Turno 2: usuário digita o código; o modelo confirma com o código ----

@@ -26,18 +26,30 @@ export class DuffelApiClient {
 
   // Requisição HTTP com retry limitado e backoff para falhas transitórias
   // (rede, timeout, 5xx, 429); erros 4xx são propagados sem nova tentativa.
-  private async httpRequest(url: string, init: { method: string; body?: string }): Promise<any> {
-    return withRetry(
-      async () => {
-        const response = await fetch(url, { ...init, headers: this.getHeaders() });
-        if (!response.ok) {
-          const errJson: any = await response.json().catch(() => ({}));
-          throw new Error(errJson.errors?.[0]?.message || `Erro HTTP: ${response.status}`);
-        }
-        return response.json();
-      },
-      { retries: 2, baseDelayMs: 300 }
-    );
+  //
+  // `retryable: false` desliga o retry em requisições NÃO idempotentes (ex.:
+  // criação de offer request), onde repetir criaria recursos duplicados no
+  // provedor a cada tentativa.
+  private async httpRequest(
+    url: string,
+    init: { method: string; body?: string; retryable?: boolean }
+  ): Promise<any> {
+    const { retryable = true, ...requestInit } = init;
+
+    const executar = async () => {
+      const response = await fetch(url, { ...requestInit, headers: this.getHeaders() });
+      if (!response.ok) {
+        const errJson: any = await response.json().catch(() => ({}));
+        const err: any = new Error(errJson.errors?.[0]?.message || `Erro HTTP: ${response.status}`);
+        // Preserva o código HTTP: a Duffel devolve a mensagem de negócio no
+        // corpo, então sem isto um 5xx/429 real não seria visto como transitório.
+        err.status = response.status;
+        throw err;
+      }
+      return response.json();
+    };
+
+    return retryable ? withRetry(executar, { retries: 2, baseDelayMs: 300 }) : executar();
   }
 
   // --- VOOS (Duffel Flights) ---
@@ -150,8 +162,10 @@ export class DuffelApiClient {
 
     try {
       const url = `${this.baseUrl}/air/offer_requests`;
+      // Não idempotente: cada POST cria uma nova cotação no provedor
       const resJson = await this.httpRequest(url, {
         method: "POST",
+        retryable: false,
         body: JSON.stringify({
           data: {
             slices: [
