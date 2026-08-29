@@ -220,13 +220,16 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 7.1 — Documentar system prompt e ciclo de refinamento
 
-- [ ] Status: pendente
-- **Requisitos:** R31, R33
-- **Branch:** `docs/prompts-refinamento`
+- [x] Status: concluído
+- **Requisitos:** R31, R33 ✅
+- **Branch:** `docs/prompts-refinamento` (mesclada via PR [#7](https://github.com/lpradopires/agent_viagens/pull/7))
 - **Ações:**
-  - Criar `docs/prompts/system_prompt.md` documentando as duas variantes de `getSystemPrompt()` (objetivo, regras, restrições)
-  - Criar `docs/prompts/ciclo_refinamento.md` formalizando um ciclo real (problema observado → alteração → resultado), aproveitando o histórico de commits como fonte
-- **Definição de Pronto:** os dois documentos criados e coerentes com o código atual (pós Fases 1–2).
+  - [x] `docs/prompts/system_prompt.md`: estrutura do prompt (identidade + data injetada dinamicamente, diretrizes por provedor, `GOVERNANCE_RULES` compartilhadas), objetivo, as 8 regras da variante GeckoAPI e 6 da Duffel, limites de autonomia, regras anti prompt-injection, padrões de resposta e configuração do modelo por variável de ambiente
+  - [x] **Seção central** — "o que o prompt não garante sozinho": cada regra crítica mapeada para a contraparte determinística que a sustenta (`redactSecrets`, gate de aprovação, `recursionLimit`, schemas Zod, node `tools_desconhecida`). Padrão consolidado: _o prompt orienta o desejado; a aplicação impõe o obrigatório; os testes provam que a imposição funciona_
+  - [x] `docs/prompts/ciclo_refinamento.md`: o PDF pede **um** ciclo — documentados **seis**, todos reais e rastreáveis por commit (placeholders `9ff9134`; erro de validação `78af003`; loops `4893d80`+`953abe0`; aeroporto comercial `acfe639`; gate aceitando recusa e redação sem cobrir blocos, ambos vindos do code review da Fase 4)
+  - [x] Síntese da evolução: de "instruir melhor o modelo" (ciclos 1–2) → "instrução + limite técnico" (3–4) → "verificar as garantias adversarialmente" (5–6). No ciclo 5 o modelo **obedeceu corretamente** — a regra é que estava mal especificada
+  - [x] README de `docs/prompts/` reescrito separando prompts de **produção** (do agente) de prompts de **desenvolvimento** (histórico), com links relativos corrigidos (os antigos `file:///` não funcionavam no GitHub)
+- **Definição de Pronto:** ✅ os dois documentos criados e coerentes com o código atual (pós Fases 1–6); links internos validados; 85/85 testes; CI verde.
 
 ---
 
