@@ -1,7 +1,3 @@
-
-
-
-
 https://github.com/user-attachments/assets/85036b42-b02a-4d66-99f6-b241c3a70526
 
 # Agente de Busca de Viagens Autónomo (GeckoAPI & Duffel)
@@ -316,7 +312,42 @@ E para hospedagem no Rio de Janeiro (check-in: 15/07/2026, check-out: 17/07/2026
 
 ---
 
-## ⚠️ 5. Limitações da Solução
+## 🔄 5. Automação Low-Code/No-Code (n8n)
+
+O projeto inclui uma automação **n8n** que monitora diariamente o preço de uma rota e alerta quando há oportunidade. A **lógica de negócio permanece na aplicação** — o n8n apenas agenda, integra e roteia.
+
+**Fluxo:** `Gatilho (Schedule 9h / Webhook)` → `POST /api/chat` (consulta o agente) → `POST /api/monitor/avaliar` (regra de preço, na aplicação) → `IF` → `POST /api/alertas` (saída observável).
+
+### Reprodução resumida
+
+```bash
+# 1. Suba a aplicação
+TRAVEL_API_PROVIDER=duffel DUFFEL_ACCESS_TOKEN=mock npm run server
+
+# 2. Suba o n8n (Docker recomendado)
+docker run -it --rm -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
+
+# 3. No n8n (http://localhost:5678): Workflows → Import from File
+#    → automations/n8n/monitor-precos-viagem.json
+#    → Execute Workflow (teste manual) ou ative para o agendamento diário
+
+# 4. Confira a saída observável
+curl "http://localhost:3000/api/alertas?origem=n8n:monitor-precos"
+```
+
+> No macOS/Windows com Docker, troque `http://localhost:3000` por `http://host.docker.internal:3000` dentro dos nós do fluxo.
+
+Para validar o contrato de integração **sem a interface visual** (mesma sequência de chamadas HTTP dos nós):
+
+```bash
+npx tsx scripts/simular_fluxo_n8n.ts --limite 600
+```
+
+📄 Detalhes, diagrama e evidências: [docs/evidencias/low_code_flow/](docs/evidencias/low_code_flow/)
+
+---
+
+## ⚠️ 6. Limitações da Solução
 
 - **Sandbox da Duffel Stays:** A API de hotéis da Duffel (`Stays API`) exige liberação comercial na conta de desenvolvedor, podendo retornar erro `403 Forbidden` caso a chave do usuário não possua esse recurso ativado (tratado de forma resiliente pelo agente).
 - **Timeouts do GDS:** A busca de voos em sistemas de distribuição global (GDS) pode demorar, por isso definimos timeouts de até 35 segundos para requisições de rede.

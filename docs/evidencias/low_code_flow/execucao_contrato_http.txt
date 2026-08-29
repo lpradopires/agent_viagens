@@ -1,0 +1,43 @@
+Simulando o fluxo n8n contra http://localhost:3000 (limite: R$ 600)
+
+[nó: Consultar Agente de Viagens] POST /api/chat
+  resposta do agente (459 chars):
+    Aqui estão as opções de voos de São Paulo (GRU) para o Rio de Janeiro (GIG) daqui a 30 dias:
+    
+    1. LATAM Airlines - Voo LA3150
+       - Partida: 28 de setembro de 2026 às 08:30
+       - Chegada: 28 de setembro de 2026 às 09:45
+       - Preço: R$ 550,00
+    
+    2. Azul Linhas Aéreas - Voo AD4200
+       - Partida: 28 de setembro de 2026 às 14:15
+       - Chegada: 28 de setembro de 2026 às 15:30
+       - Preço: R$ 620,00
+    
+    Se desejar, posso detalhar mais alguma opção ou ajudar com a reserva.
+
+[nó: Avaliar Precos] POST /api/monitor/avaliar
+  {"precoMinimo":550,"limite":600,"deveAlertar":true,"precosEncontrados":[550,620]}
+
+[nó: Preco abaixo do limite?] → TRUE
+[nó: Registrar Alerta] POST /api/alertas
+  alerta alerta_1_mtex9sm6 registrado
+
+[saída observável] GET /api/alertas → 1 alerta(s)
+{
+  "id": "alerta_1_mtex9sm6",
+  "timestamp": "2026-08-29T21:58:28.638Z",
+  "origem": "n8n:monitor-precos",
+  "tipo": "preco_abaixo_do_limite",
+  "titulo": "Passagem GRU->GIG por R$ 550",
+  "detalhe": "O menor preco encontrado (R$ 550) ficou abaixo do limite de R$ 600.",
+  "dados": {
+    "precoMinimo": 550,
+    "limite": 600,
+    "deveAlertar": true,
+    "precosEncontrados": [
+      550,
+      620
+    ]
+  }
+}
