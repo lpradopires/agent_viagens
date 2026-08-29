@@ -150,23 +150,31 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 4.1 — Revisão de código por IA em um diff real
 
-- [ ] Status: pendente
-- **Requisitos:** R20
-- **Branch:** `feature/qa-inteligente`
+- [x] Status: concluído
+- **Requisitos:** R20 ✅
+- **Branch:** `feature/qa-inteligente` (mesclada via PR [#4](https://github.com/lpradopires/agent_viagens/pull/4))
 - **Ações:**
-  - Escolher um diff real já produzido nas fases anteriores (ex.: o diff da paralelização da Fase 1)
-  - Rodar revisão assistida por IA sobre esse diff e documentar problemas encontrados/sugestões/decisão tomada em `docs/qa/code_review_ia.md`
-- **Definição de Pronto:** documento com a revisão de um diff real e conclusão sobre o que foi aplicado ou não.
+  - [x] Alvo escolhido: o diff acumulado `main...develop` (24 commits, ~2000 linhas das Fases 1–3) — mais rico que o diff isolado da 1.1, pois cobre também governança e observabilidade
+  - [x] Revisão assistida por IA em esforço `high`, com **probes executando o grafo real** para confirmar os achados antes de reportá-los
+  - [x] **10 problemas encontrados** — 8 corrigidos (5 P0 + 3 P1), 2 aceitos como dívida registrada
+  - [x] Correções aplicadas com testes de regressão (ver 4.2), incluindo o bug do `filterDataNode` que a observabilidade da 3.2 já havia detectado, e remoção do `activeTools` (código morto)
+  - [x] `docs/qa/code_review_ia.md`: achados por severidade, correções, decisões e análise crítica do uso de IA
+- **Achado mais relevante:** 3 dos 5 P0 furavam garantias que o **próprio projeto** havia construído nas Fases 2 e 3 (isolamento de sessão na reserva, gate de aprovação vs. mensagem de recusa, redação de segredos em conteúdo em blocos) — com a suíte de testes verde o tempo todo.
+- **Definição de Pronto:** ✅ documento com a revisão de um diff real e o que foi aplicado ou não; 53/53 testes; CI verde.
 
 ### 4.2 — Teste gerado/refinado por IA com priorização por risco
 
-- [ ] Status: pendente
-- **Requisitos:** R21, R22
-- **Branch:** `feature/qa-inteligente` (mesma branch)
+- [x] Status: concluído
+- **Requisitos:** R21, R22 ✅
+- **Branch:** `feature/qa-inteligente` (mesma branch da 4.1)
 - **Ações:**
-  - Gerar/refinar com apoio de IA um teste de integração ou E2E cobrindo o fluxo combinado voo+hotel em paralelo (cenário mais crítico após a Fase 1)
-  - Justificar em `docs/qa/priorizacao_testes.md` por que esse é o cenário prioritário
-- **Definição de Pronto:** teste novo/refinado passando; justificativa de priorização documentada.
+  - [x] 11 testes em `tests/regressao_code_review.test.ts`, organizados em blocos que declaram o risco no nome (P0 integridade de sessão / P0 governança / P0 vazamento / P1 resiliência) — **todos derivados de defeitos reais**, não de cobertura especulativa
+  - [x] **Cenário prioritário nº 1:** reserva confirmada sem aprovação humana legítima — única ação irreversível do domínio, impacto máximo, sem recuperabilidade, com **dois caminhos de burla reproduzidos**
+  - [x] **Cenário prioritário nº 2:** sessão permanentemente inutilizada por `tool_call` órfã — falha persistente no checkpointer, probabilidade média-alta
+  - [x] Tipos exigidos pelo PDF cobertos: **integração** no grafo LangGraph completo (`travelAgentGraph.invoke`) e **integração de API** (Express via supertest), além de unitários
+  - [x] `docs/qa/priorizacao_testes.md`: critério risco = probabilidade × impacto, justificativa dos cenários, mapa dos testes e o que ficou conscientemente de fora
+- **Nota:** o cenário paralelo voo+hotel previsto originalmente já estava coberto desde a atividade 1.1; a priorização por risco redirecionou o esforço para os defeitos que a revisão expôs, que eram mais críticos.
+- **Definição de Pronto:** ✅ testes passando (suíte 42 → **53**); justificativa de priorização documentada.
 
 ---
 
