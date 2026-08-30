@@ -3,7 +3,7 @@
 > Evidência da atividade 7.1 do [PLANO_EXECUCAO.md](../../PLANO_EXECUCAO.md).
 > Requisito do PDF (item 4.10): _"Documentar pelo menos um ciclo de refinamento de prompt ou comportamento do agente, apresentando o problema observado, a alteração realizada e o resultado obtido."_
 
-O PDF pede **um** ciclo. Documentamos **seis**, todos reais e rastreáveis por commit, porque juntos contam a evolução do entendimento do projeto: começamos ajustando texto de prompt e terminamos aprendendo que prompt sozinho não garante nada.
+O PDF pede **um** ciclo. Documentamos **sete**, todos reais e rastreáveis por commit, porque juntos contam a evolução do entendimento do projeto: começamos ajustando texto de prompt e terminamos aprendendo que prompt sozinho não garante nada — e que nem a suíte verde garante.
 
 ---
 
@@ -92,12 +92,31 @@ Este ciclo e o próximo foram descobertos pela [revisão de código com IA](../q
 
 ---
 
+## Ciclo 7 — O agente pedia um código que ele mesmo deveria gerar
+
+Descoberto ao **rodar a aplicação de ponta a ponta** após a Fase 8 — nenhum teste automatizado pegaria, porque nos testes o `tool_call` é forçado pelo mock.
+
+|                                 |                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Problema observado**          | Ao pedir _"quero reservar o voo off_mock_1"_, o agente respondia: _"preciso que você me informe o código de confirmação que recebeu anteriormente"_ — e **não chamava a tool**. O usuário ficava num impasse: o código só existe depois da chamada, mas o agente esperava recebê-lo do usuário. A auditoria confirmou: `tool_calls: []`                                      |
+| **Diagnóstico**                 | A instrução descrevia o fluxo de forma **declarativa** (_"na primeira chamada, omita `codigo_confirmacao`"_), e o modelo pequeno (`gpt-4.1-nano`) leu "requer aprovação humana via código" como pré-requisito para agir, não como resultado da primeira chamada                                                                                                              |
+| **Alteração — em três frentes** | (a) Descrição da tool reescrita em passos imperativos, com _"NUNCA peça o código ao usuário antes do passo 1 — quem gera o código é a ferramenta"_; (b) `GOVERNANCE_RULES` reforçadas com _"CHAME a ferramenta IMEDIATAMENTE"_ e _"EXIBA esse código literalmente"_; (c) regra numerada sobre reservas adicionada ao **corpo principal** dos dois prompts de provedor        |
+| **Resultado**                   | Apenas (a) e (b) **não** resolveram — o agente continuou pedindo o código. Só após (c) o fluxo passou a funcionar: `"Por favor, digite o código CONF-109B3F9C para confirmar a reserva do voo."` → usuário digita → `"reserva confirmada […] localizador SIM-4202CD"`, com a auditoria registrando `pendencia registrada` e depois `reserva confirmada com aprovacao humana` |
+
+**Lição — duas, e a segunda é sobre método:**
+
+1. **Onde a instrução está no prompt importa tanto quanto o que ela diz.** Modelos pequenos dão mais peso às regras numeradas do corpo principal do que a um bloco de governança no final. A mesma regra, movida de lugar, mudou o comportamento.
+2. **Teste com LLM mockado não substitui execução real.** A suíte inteira passava porque os testes forçam o `tool_call` para verificar o _gate_; nenhum deles verificava se o modelo **decide** chamar a tool. O caminho feliz da funcionalidade mais crítica do projeto estava quebrado, e só apareceu ao usar a aplicação.
+
+---
+
 ## Síntese da evolução
 
-| Fase do projeto | O que se acreditava               | O que se aprendeu                                                                                              |
-| --------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Ciclos 1–2      | "Basta instruir melhor o modelo"  | Instruções precisam proibir o anti-padrão e apontar onde está o dado                                           |
-| Ciclos 3–4      | "Instrução + limite técnico"      | Prompt reduz probabilidade; a aplicação garante o limite                                                       |
-| Ciclos 5–6      | "Temos garantias determinísticas" | Garantias precisam ser **verificadas adversarialmente** — as duas tinham bordas descobertas, com a suíte verde |
+| Fase do projeto | O que se acreditava                   | O que se aprendeu                                                                                                                                 |
+| --------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ciclos 1–2      | "Basta instruir melhor o modelo"      | Instruções precisam proibir o anti-padrão e apontar onde está o dado                                                                              |
+| Ciclos 3–4      | "Instrução + limite técnico"          | Prompt reduz probabilidade; a aplicação garante o limite                                                                                          |
+| Ciclos 5–6      | "Temos garantias determinísticas"     | Garantias precisam ser **verificadas adversarialmente** — as duas tinham bordas descobertas, com a suíte verde                                    |
+| Ciclo 7         | "A suíte verde comprova que funciona" | Teste com LLM mockado verifica o _gate_, não a **decisão do modelo**. Só rodar a aplicação revelou que o caminho feliz da reserva estava quebrado |
 
 O resultado é o padrão consolidado em [system_prompt.md §6](system_prompt.md): **o prompt orienta o comportamento desejado; a aplicação impõe o comportamento obrigatório; os testes provam que a imposição funciona.**

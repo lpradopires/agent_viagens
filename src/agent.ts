@@ -108,8 +108,8 @@ const GOVERNANCE_RULES = `
 REGRAS DE GOVERNANÇA E LIMITES DE AUTONOMIA:
 - Ferramentas de BUSCA (voos, hotéis, aeroportos) são somente leitura e podem ser executadas livremente, sem aprovação.
 - A ferramenta 'confirmar_reserva' representa uma AÇÃO IRREVERSÍVEL SIMULADA e exige aprovação humana explícita em duas etapas:
-  1. Na primeira chamada, omita 'codigo_confirmacao': a solicitação será registrada e um código de aprovação será retornado, SEM executar a reserva.
-  2. Apresente o código ao usuário e peça que ele o digite para aprovar. NUNCA invente, presuma ou preencha o código por conta própria.
+  1. Assim que o usuário pedir para reservar, CHAME a ferramenta IMEDIATAMENTE omitindo 'codigo_confirmacao'. Não peça o código antes: quem gera o código é a ferramenta, não o usuário. A reserva NÃO é executada nesta etapa.
+  2. A ferramenta retornará um código no formato CONF-XXXXXXXX. EXIBA esse código literalmente na sua resposta e peça que o usuário o digite para aprovar. NUNCA invente, presuma ou preencha o código por conta própria.
   3. Somente chame a ferramenta com 'codigo_confirmacao' depois que o usuário digitar o código na mensagem dele. A aplicação valida isso de forma determinística e BLOQUEARÁ qualquer confirmação sem aprovação humana real.
 - Se uma ferramenta retornar "APROVAÇÃO HUMANA NECESSÁRIA" ou "AÇÃO BLOQUEADA", explique ao usuário o motivo e o que ele precisa fazer, sem tentar contornar o bloqueio.
 
@@ -149,6 +149,7 @@ Suas diretrizes de processamento na Duffel:
 4. Quando as ferramentas retornarem os dados, consolide as opções de forma clara e estruturada no terminal, apresentando os dados reais obtidos no histórico (companhias, horários, preços, comodidades, etc.). NUNCA use placeholders (ex: "[Detalhes de voo]").
 5. Tratamento de Erros de Validação: Se alguma das ferramentas retornar "Erro de validação:", explique imediatamente ao usuário de forma clara e prestativa quais dados específicos (ex: data no passado) precisam ser corrigidos.
 6. Evite Loops de Chamadas Repetidas: Se uma ferramenta de busca já tiver sido executada no histórico da conversa e retornado erro ou nenhuma opção viável, NÃO a chame de novo na mesma sessão. Apresente os resultados das ferramentas que funcionaram ou informe que o serviço está temporariamente indisponível.
+7. RESERVAS: se o usuário pedir para reservar algo (ex: "quero reservar o voo X"), sua PRIMEIRA ação é CHAMAR a ferramenta 'confirmar_reserva' com o tipo e o referencia_id, SEM o campo codigo_confirmacao. Não responda pedindo o código: é a ferramenta que o gera. Depois de receber o código da ferramenta, exiba-o ao usuário e peça que ele o digite.
 ${GOVERNANCE_RULES}`;
   }
 
@@ -166,6 +167,7 @@ Suas diretrizes de processamento na GeckoAPI:
 6. Quando as ferramentas retornarem os dados, consolide as opções de forma clara e estruturada no terminal, apresentando os dados reais das passagens ou hotéis obtidos no histórico (companhia, voos, horários, preços, notas, etc.). NUNCA use placeholders, templates ou colchetes vazios (ex: "[Detalhes de voo]"). Se os dados das buscas anteriores já estão presentes no histórico de mensagens (ToolMessages), use-os para detalhar as opções para o usuário.
 7. Tratamento de Erros de Validação: Se alguma das ferramentas retornar uma resposta contendo "Erro de validação:" (como datas no passado, aeroporto de origem igual ao de destino, ou local não preenchido), você NÃO deve exibir uma lista vazia ou simular que a busca foi feita. Em vez disso, explique imediatamente ao usuário de forma clara e prestativa que a busca não pôde ser completada porque os dados XXX estão incorretos, listando quais dados específicos precisam ser corrigidos (ex: a data de partida ou a cidade de destino) para que o agente possa pesquisar com sucesso.
 8. Evite Loops de Chamadas Repetidas: Se uma ferramenta de busca (ex: Trivago, Airbnb, GOL, etc.) já tiver sido executada no histórico da conversa e retornado um erro de instabilidade, erro de validação ou nenhuma opção viável, NÃO tente chamá-la de novo nas próximas rodadas conversacionais da mesma sessão. Apresente ao usuário os resultados das ferramentas que funcionaram ou informe de forma direta que aquele serviço está temporariamente indisponível, em vez de insistir em novas chamadas redundantes que causarão loops de erro.
+9. RESERVAS: se o usuário pedir para reservar algo (ex: "quero reservar o hotel X"), sua PRIMEIRA ação é CHAMAR a ferramenta 'confirmar_reserva' com o tipo e o referencia_id, SEM o campo codigo_confirmacao. Não responda pedindo o código: é a ferramenta que o gera. Depois de receber o código da ferramenta, exiba-o ao usuário e peça que ele o digite.
 ${GOVERNANCE_RULES}`;
 };
 
@@ -282,40 +284,80 @@ function cleanObject(obj: any): any {
   return obj;
 }
 
+// Tools cujo retorno é a LISTAGEM de opções apresentada ao usuário — só elas
+// alimentam flightResults/hotelResults, que a API REST e a interface web usam
+// para renderizar os cards. As demais tools da categoria são auxiliares
+// (`search_airports` resolve IATA; `get_offer_details`/`get_hotel_details`
+// detalham um item já escolhido) e não produzem listagem.
+const VOOS_LISTAGEM = new Set([
+  "buscar_voos_latam",
+  "buscar_voos_azul",
+  "buscar_voos_gol",
+  "create_offer_request",
+]);
+const HOTEIS_LISTAGEM = new Set([
+  "buscar_hoteis_airbnb",
+  "buscar_hoteis_hoteis_com",
+  "buscar_hoteis_trivago",
+  "search_hotels_by_location",
+]);
+
+// Normaliza os dois formatos de retorno das tools: array direto (GeckoAPI e
+// Duffel Stays) ou envelope com a lista dentro (`{ id, offers: [...] }` do
+// create_offer_request). Sem tratar o segundo, os voos da Duffel — o caso de
+// uso principal do provedor — nunca entrariam no estado.
+export function extrairListagem(parsed: any): any[] | null {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === "object" && Array.isArray(parsed.offers)) {
+    return parsed.offers;
+  }
+  return null;
+}
+
 // Nó de Filtragem de Dados (Token Reducer)
 const filterDataNode = (state: typeof StateAnnotation.State, config: any) => {
   const startedAt = Date.now();
   const flightResults: any[] = [];
   const hotelResults: any[] = [];
 
-  // Percorre as mensagens recentes para reduzir o volume de dados das ferramentas
+  // Processa apenas as ToolMessages da ITERAÇÃO ATUAL — as do fim do histórico,
+  // logo após a última mensagem do agente. O node roda a cada volta do ciclo e o
+  // reducer do estado concatena; reprocessar o histórico inteiro republicaria os
+  // mesmos resultados a cada iteração, duplicando-os em flightResults/hotelResults.
+  const mensagensDaIteracao: BaseMessage[] = [];
   for (let i = state.messages.length - 1; i >= 0; i--) {
-    const msg = state.messages[i];
-    if (msg.getType() === "tool" && typeof msg.content === "string") {
-      try {
-        const parsed = JSON.parse(msg.content);
-        if (Array.isArray(parsed)) {
-          // Filtra apenas os top 3 melhores resultados
-          const topResults = parsed.slice(0, 3);
+    if (state.messages[i].getType() !== "tool") break;
+    mensagensDaIteracao.unshift(state.messages[i]);
+  }
 
-          // Limpa recursivamente chaves longas e inúteis (URLs, imagens, descrições)
-          const cleaned = cleanObject(topResults);
+  for (const msg of mensagensDaIteracao) {
+    if (typeof msg.content !== "string") continue;
+    try {
+      const parsed = JSON.parse(msg.content);
+      const listagem = extrairListagem(parsed);
+      if (!listagem) continue;
 
-          // Categoriza pelo mapa de tools de cada provedor (não pelo nome conter
-          // "voos"/"hoteis", que só valia para a nomenclatura da GeckoAPI e
-          // deixava os resultados da Duffel fora do estado).
-          if (msg.name && voosToolsByName.has(msg.name)) {
-            flightResults.push(...cleaned);
-          } else if (msg.name && hoteisToolsByName.has(msg.name)) {
-            hotelResults.push(...cleaned);
-          }
+      // Filtra apenas os top 3 melhores resultados e limpa recursivamente as
+      // chaves longas e inúteis (URLs, imagens, descrições)
+      const cleaned = cleanObject(listagem.slice(0, 3));
 
-          // Atualiza o conteúdo da mensagem por referência (in-place)
-          msg.content = JSON.stringify(cleaned, null, 2);
-        }
-      } catch {
-        // Ignora caso o conteúdo não seja um JSON válido (ex: texto de erro)
+      // Só tools de LISTAGEM alimentam o estado exposto pela API/UI. As
+      // auxiliares (resolver IATA, detalhar uma oferta) passam pela limpeza
+      // mas não entram como "resultado de voo/hotel".
+      const nome = msg.name ?? "";
+      if (VOOS_LISTAGEM.has(nome)) {
+        flightResults.push(...cleaned);
+      } else if (HOTEIS_LISTAGEM.has(nome)) {
+        hotelResults.push(...cleaned);
       }
+
+      // Atualiza o conteúdo da mensagem por referência (in-place), preservando
+      // o envelope quando o retorno é um objeto (ex.: { id, offers } da Duffel)
+      msg.content = Array.isArray(parsed)
+        ? JSON.stringify(cleaned, null, 2)
+        : JSON.stringify({ ...parsed, offers: cleaned }, null, 2);
+    } catch {
+      // Ignora caso o conteúdo não seja um JSON válido (ex: texto de erro)
     }
   }
 
