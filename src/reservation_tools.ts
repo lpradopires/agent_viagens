@@ -100,7 +100,11 @@ export async function executarReserva(
 export const confirmarReserva = tool(async (params) => executarReserva(params, "sem_thread"), {
   name: "confirmar_reserva",
   description:
-    "Confirma (em modo SIMULADO) a reserva de um voo ou hotel previamente pesquisado. Ação irreversível: requer aprovação humana explícita via código de confirmação. Na primeira chamada, omita codigo_confirmacao para registrar a solicitação e gerar o código; chame novamente com o código somente depois que o usuário o digitar na mensagem dele.",
+    "Inicia ou conclui (em modo SIMULADO) a reserva de um voo ou hotel. FLUXO OBRIGATÓRIO EM DOIS PASSOS: " +
+    "(1) Assim que o usuário pedir para reservar, chame esta ferramenta IMEDIATAMENTE, SEM o parâmetro codigo_confirmacao. " +
+    "Ela devolverá um código no formato CONF-XXXXXXXX que você DEVE exibir na sua resposta ao usuário. " +
+    "(2) Somente depois que o usuário digitar esse código na mensagem dele, chame esta ferramenta de novo COM codigo_confirmacao. " +
+    "NUNCA peça o código ao usuário antes do passo 1 — quem gera o código é a ferramenta, não o usuário.",
   schema: z.object({
     tipo: z.enum(["voo", "hotel"]).describe("Tipo de reserva a confirmar"),
     referencia_id: z.string().describe("ID da oferta de voo ou do hotel escolhido pelo usuário"),

@@ -54,7 +54,7 @@ Esta solução **evolui** o mini-projeto do módulo. O que mudou:
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅ **Mantidas**    | Domínio e proposta de valor; grafo LangGraph com estado tipado; tools GeckoAPI (MCP) e Duffel; memória por sessão via `MemorySaver`; validação Zod e pré-validação local; CLI e interface web; CI com lint/build/test                                                                                                                              |
 | 🔄 **Refatoradas** | O `ToolNode` genérico foi substituído por **nodes por categoria** com fan-out paralelo; `filterDataNode` passou a categorizar pelos mapas de tools (antes falhava com nomes Duffel); `formatterNode` deixou de ser pass-through e virou barreira de redação de segredos; retry/timeout formalizados em helper reutilizável                         |
-| ➕ **Adicionadas** | Paralelização real no grafo; ação irreversível simulada com **gate determinístico de aprovação humana**; defesas anti prompt-injection em 3 camadas; **dois sinais de observabilidade** correlacionados; retry com backoff e orçamento de tempo; análise de CI com IA (anomalias + risco); automação low-code n8n; suíte de **85 testes** (era 19) |
+| ➕ **Adicionadas** | Paralelização real no grafo; ação irreversível simulada com **gate determinístico de aprovação humana**; defesas anti prompt-injection em 3 camadas; **dois sinais de observabilidade** correlacionados; retry com backoff e orçamento de tempo; análise de CI com IA (anomalias + risco); automação low-code n8n; suíte de **91 testes** (era 19) |
 
 ---
 
@@ -305,7 +305,7 @@ TRAVEL_API_PROVIDER=duffel DUFFEL_ACCESS_TOKEN=mock npm run server
 ### 4. Testes e qualidade
 
 ```bash
-npm test              # 85 testes (vitest)
+npm test              # 91 testes (vitest)
 npm run coverage      # relatório de cobertura
 npm run lint          # ESLint + Prettier
 npm run build         # compilação TypeScript
@@ -323,19 +323,20 @@ npx tsx scripts/simular_fluxo_n8n.ts           # valida o contrato do fluxo n8n
 
 ## 7. QA, observabilidade e DevOps
 
-### Testes automatizados — 85 testes, 12 arquivos
+### Testes automatizados — 91 testes, 13 arquivos
 
-| Arquivo                                                                                       | Cobertura                                                                                |
-| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `agent.test.ts`                                                                               | Grafo, resposta direta, tool única e **fluxo paralelo voo+hotel**                        |
-| `reservation.test.ts`                                                                         | Aprovação humana: pendência, código inválido, fluxo completo, bloqueio de auto-aprovação |
-| `adversarial.test.ts`                                                                         | Prompt injection direta e indireta, redação de segredos                                  |
-| `observability.test.ts`                                                                       | Correlação dos dois sinais, isolamento por thread, endpoint de debug                     |
-| `retry.test.ts`                                                                               | Retry, backoff, classificação de erro transitório, fallback                              |
-| `regressao_code_review.test.ts`                                                               | 11 regressões dos defeitos achados no code review com IA                                 |
-| `ci_analysis.test.ts`                                                                         | Heurísticas de anomalia, correlação e projeção (com casos negativos)                     |
-| `alerts.test.ts`                                                                              | Regra do monitor de preços e contrato HTTP do n8n                                        |
-| `gecko_api_client.test.ts` · `duffel_api_client.test.ts` · `server.test.ts` · `index.test.ts` | Clientes, API REST e CLI                                                                 |
+| Arquivo                                                                                       | Cobertura                                                                                                              |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `agent.test.ts`                                                                               | Grafo, resposta direta, tool única e **fluxo paralelo voo+hotel**                                                      |
+| `reservation.test.ts`                                                                         | Aprovação humana: pendência, código inválido, fluxo completo, bloqueio de auto-aprovação                               |
+| `adversarial.test.ts`                                                                         | Prompt injection direta e indireta, redação de segredos                                                                |
+| `observability.test.ts`                                                                       | Correlação dos dois sinais, isolamento por thread, endpoint de debug                                                   |
+| `retry.test.ts`                                                                               | Retry, backoff, classificação de erro transitório, fallback                                                            |
+| `regressao_code_review.test.ts`                                                               | 11 regressões dos defeitos achados no code review com IA                                                               |
+| `ci_analysis.test.ts`                                                                         | Heurísticas de anomalia, correlação e projeção (com casos negativos)                                                   |
+| `alerts.test.ts`                                                                              | Regra do monitor de preços e contrato HTTP do n8n                                                                      |
+| `filter_resultados.test.ts`                                                                   | Integridade da **saída estruturada**: envelope da Duffel, tools auxiliares fora dos resultados, ausência de duplicação |
+| `gecko_api_client.test.ts` · `duffel_api_client.test.ts` · `server.test.ts` · `index.test.ts` | Clientes, API REST e CLI                                                                                               |
 
 ### Análise de código com IA
 
