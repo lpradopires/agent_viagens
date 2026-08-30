@@ -1,0 +1,78 @@
+◇ injected env (5) from .env // tip: ⌘ suppress logs { quiet: true }
+[1/4] Coletando as 12 execuções mais recentes do pipeline...
+      12 execuções coletadas.
+
+[2/4] Estatísticas por etapa (duração em segundos):
+
+┌─────────┬────────────────────────┬───────────┬───────┬────────┬─────┬─────┬─────────────┐
+│ (index) │ etapa                  │ execucoes │ media │ desvio │ min │ max │ tendencia % │
+├─────────┼────────────────────────┼───────────┼───────┼────────┼─────┼─────┼─────────────┤
+│ 0       │ 'Run Linter'           │ 12        │ 1.92  │ 0.28   │ 1   │ 2   │ -8.3        │
+│ 1       │ 'Run Build'            │ 12        │ 3     │ 0.41   │ 2   │ 4   │ 0           │
+│ 2       │ 'Run Tests'            │ 12        │ 3.25  │ 0.92   │ 2   │ 5   │ 60          │
+│ 3       │ 'Install Dependencies' │ 12        │ 4.5   │ 0.87   │ 3   │ 6   │ -13.8       │
+└─────────┴────────────────────────┴───────────┴───────┴────────┴─────┴─────┴─────────────┘
+
+[3/4] Anomalias detectadas (heurísticas determinísticas):
+
+  • [MEDIA] outlier_duracao em "Run Build"
+    Duração de 4s em "Run Build" está 2.4 desvios-padrão acima da média (3s).
+    evidência: run 33274611454 (develop) — série: [3, 3, 3, 3, 3, 3, 3, 4, 2, 3, 3, 3]
+
+  • [ALTA] tendencia_crescente em "Run Tests"
+    Duração de "Run Tests" cresceu 60% entre a primeira e a segunda metade das execuções.
+    evidência: série cronológica: [2, 2, 2, 3, 3, 3, 4, 4, 3, 4, 4, 5] (min 2s, max 5s)
+
+  ESTIMATIVA DE RISCO DE FALHA DO PIPELINE
+  score: 20/100  |  nível: BAIXO
+  taxa de falha histórica: 0%
+    - taxa de falha histórica 0.0% (0/12 execuções) → +0.0
+    - 1 etapa(s) com tendência de duração crescente → +15.0
+    - 1 outlier(s) de duração → +5.0
+  limiares: {"zScoreOutlier":2,"tendenciaCrescentePct":30,"falhasRecorrentes":2}
+
+[4/4] Explicação dos logs pela IA...
+
+Relatório de Análise do Pipeline de CI - Run 33275655692 (Branch: develop)
+
+1. Análise das etapas e resultados
+
+a) Run Linter
+- O que fez: Executou o comando "npm run lint" usando ESLint para verificar problemas de estilo e possíveis erros no código.
+- Resultado: A execução foi concluída com sucesso, sem mensagens de erro ou aviso nos logs fornecidos. Como o comando não apresentou falhas, presume-se que o código está em conformidade com as regras de lint.
+
+b) Run Tests
+- O que fez: Executou uma bateria de testes automatizados, incluindo testes unitários e de integração, abrangendo diferentes componentes da aplicação.
+- Resultados concretos:
+  - 10 arquivos de teste passaram, totalizando 53 testes bem-sucedidos.
+  - Os testes incluíram verificações de integração com APIs mockadas e testes de resiliência (retry em falhas transitórias).
+  - Tempo total de execução: aproximadamente 4.22 segundos.
+  - Logs indicam que testes de retry foram bem-sucedidos, com tempos de resposta transitórios tratados adequadamente.
+  - Nenhuma falha ou erro foi reportado.
+
+2. Interpretação das anomalias detectadas
+
+a) Outlier na duração do "Run Build"
+- Duração registrada: 4 segundos.
+- Média histórica: 3 segundos.
+- Desvio padrão: aproximadamente 0.41 segundos.
+- Anomalia: o tempo de 4s está 2.4 desvios-padrão acima da média, considerado um outlier de severidade média.
+- Causa provável: possível sobrecarga temporária na infraestrutura de build, uso de recursos excessivos ou alguma operação específica que atrasou o processo nesta execução. Como é um outlier isolado, não indica problema recorrente, mas merece monitoramento.
+
+b) Tendência crescente na duração do "Run Tests"
+- Série de tempos: [2, 2, 2, 3, 3, 3, 4, 4, 3, 4, 4, 5].
+- Crescimento de aproximadamente 60% na duração média entre o início e o final das execuções.
+- Severidade alta: indica que o tempo de testes está aumentando de forma consistente.
+- Causa provável: possível aumento na complexidade dos testes, maior carga de dados, ou problemas de desempenho na infraestrutura de execução dos testes. Pode também refletir mudanças recentes no código que impactaram a performance dos testes.
+
+3. Avaliação do risco de falha do pipeline
+
+- Score de risco: 20 pontos, classificado como risco "baixo".
+- Justificativa:
+  - Taxa de falha histórica: 0%, o que é um forte indicador de estabilidade.
+  - Uma etapa com tendência de duração crescente (Run Tests): adiciona 15 pontos ao risco, indicando atenção, mas não uma falha iminente.
+  - Um outlier de duração na etapa de build: acrescenta 5 pontos, considerado um risco moderado, porém isolado.
+- Concordância: O score parece adequado, pois o risco geral permanece baixo devido à ausência de falhas anteriores e ao fato de as anomalias serem pontuais e controláveis. Ainda assim, a tendência crescente nos testes deve ser monitorada para evitar aumento de risco futuro.
+
+**Conclusão geral:**
+O pipeline está operando de forma estável, com boas taxas de sucesso e poucas anomalias pontuais. Recomenda-se monitorar a tendência de aumento no tempo de execução dos testes e investigar possíveis causas para o outlier na build, garantindo que essas variações não evoluam para problemas mais sérios.

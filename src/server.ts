@@ -5,6 +5,8 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import { HumanMessage } from "@langchain/core/messages";
 import { travelAgentGraph } from "./agent.js";
+import { getExecutionLog, getAuditTrail } from "./observability.js";
+import { registrarAlerta, listarAlertas, avaliarMonitorDePrecos } from "./alerts.js";
 
 dotenv.config();
 
@@ -54,6 +56,83 @@ app.get("/api/config", (_req, res) => {
             ? "Groq Llama 3.1"
             : "Nenhum",
   });
+});
+
+// Observabilidade: consulta dos dois sinais correlacionados de uma sessão
+// (log estruturado de execução por node + trilha de auditoria de tools).
+//
+// Os sinais expõem parâmetros de ferramentas (incl. códigos de confirmação),
+// e thread_ids são previsíveis o bastante para enumeração — o endpoint é
+// fail-closed: sem DEBUG_API_TOKEN configurado ele não existe, e com token
+// configurado exige o header x-debug-token.
+app.get("/api/debug/:thread_id", (req, res) => {
+  const expectedToken = process.env.DEBUG_API_TOKEN;
+  if (!expectedToken) {
+    res.status(404).json({ error: "Endpoint de depuração desabilitado." });
+    return;
+  }
+  if (req.get("x-debug-token") !== expectedToken) {
+    res.status(401).json({ error: "Token de depuração inválido ou ausente." });
+    return;
+  }
+
+  const { thread_id } = req.params;
+  res.json({
+    thread_id,
+    execution_log: getExecutionLog(thread_id),
+    audit_trail: getAuditTrail(thread_id),
+  });
+});
+
+// --- Integração com automação low-code/no-code (n8n) ---
+//
+// A automação orquestra (agenda, chama, roteia); a lógica de negócio fica
+// aqui. Estes três endpoints são o contrato entre os dois lados.
+
+// Avalia a resposta do agente contra um limite de preço. A regra de negócio
+// vive na aplicação (e é testada), não em um nó de código dentro do n8n.
+app.post("/api/monitor/avaliar", (req, res) => {
+  const { resposta, limite } = req.body ?? {};
+
+  if (typeof resposta !== "string" || !resposta.trim()) {
+    res.status(400).json({ error: "O campo 'resposta' é obrigatório e deve ser um texto." });
+    return;
+  }
+  const limiteNum = Number(limite);
+  if (!Number.isFinite(limiteNum) || limiteNum <= 0) {
+    res.status(400).json({ error: "O campo 'limite' deve ser um número positivo." });
+    return;
+  }
+
+  res.json(avaliarMonitorDePrecos(resposta, limiteNum));
+});
+
+// Registra um alerta produzido pela automação (saída observável)
+app.post("/api/alertas", (req, res) => {
+  const { origem, tipo, titulo, detalhe, dados } = req.body ?? {};
+
+  if (typeof titulo !== "string" || !titulo.trim()) {
+    res.status(400).json({ error: "O campo 'titulo' é obrigatório." });
+    return;
+  }
+
+  const alerta = registrarAlerta({
+    origem: typeof origem === "string" && origem.trim() ? origem : "desconhecida",
+    tipo: typeof tipo === "string" && tipo.trim() ? tipo : "generico",
+    titulo,
+    detalhe: typeof detalhe === "string" ? detalhe : undefined,
+    dados: dados && typeof dados === "object" ? dados : undefined,
+  });
+
+  console.log(`[Alerta] ${alerta.origem} | ${alerta.tipo} | ${alerta.titulo}`);
+  res.status(201).json(alerta);
+});
+
+// Consulta dos alertas registrados — a saída observável da automação
+app.get("/api/alertas", (req, res) => {
+  const origem = typeof req.query.origem === "string" ? req.query.origem : undefined;
+  const alertas = listarAlertas(origem);
+  res.json({ total: alertas.length, alertas });
 });
 
 // Endpoint principal de chat com o agente
