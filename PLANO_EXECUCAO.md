@@ -237,18 +237,19 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 8.1 — Reescrever o README para o template do projeto final
 
-- [ ] Status: pendente
-- **Requisitos:** R1, R2, R3, R4, R35
-- **Branch:** `docs/readme-final`
+- [x] Status: concluído
+- **Requisitos:** R1, R2, R3, R4, R35 ✅
+- **Branch:** `docs/readme-final` (mesclada via PR [#8](https://github.com/lpradopires/agent_viagens/pull/8))
 - **Ações:**
-  - Descrição da solução (o que veio do mini-projeto, o que foi mantido/refeito/adicionado)
-  - Classificação explícita como **sistema híbrido** (workflow determinístico + decisão agêntica pontual), com diagrama atualizado destacando a paralelização
-  - Seções de tool/integração, contexto/memória, segurança/autonomia (incl. prompt injection), instalação/execução
-  - Evidências de QA/observabilidade/DevOps/low-code (linkando os docs criados nas fases anteriores)
-  - Dois cenários de uso (principal + risco/falha) com exemplos reais de entrada/saída
-  - Análise crítica e limitações
-  - Link do vídeo (placeholder até a Fase 9)
-- **Definição de Pronto:** README cobre todos os itens do roteiro 5.2 do PDF.
+  - [x] README reescrito do zero com as **10 seções** do roteiro 5.2 e índice navegável (o anterior ainda documentava o mini-projeto, com a numeração "Requisito 5/6/7/8")
+  - [x] Descrição: problema, público, entradas/saídas/**limites**, valor entregue e tabela **mantido / refatorado / adicionado** em relação ao mini-projeto
+  - [x] Classificação explícita como **sistema híbrido**, justificada componente a componente — _o modelo decide o que fazer; a aplicação decide o que é permitido_ — com diagrama Mermaid mostrando fan-out paralelo, os 4 nodes de tool e os sinais de observabilidade
+  - [x] Tools/integrações, contexto/memória (**incluindo por que NÃO se usou RAG** neste domínio), segurança/autonomia (4 garantias determinísticas + 3 camadas anti-injection), instalação/execução com tabela completa de env vars
+  - [x] QA/observabilidade/DevOps/low-code, linkando as evidências das fases anteriores
+  - [x] Dois cenários de uso: **principal** (saída real do agente) e **risco** (injection indireta bloqueada pelo gate, com a auditoria correspondente)
+  - [x] Análise crítica: o refinamento do gate que aceitava recusa como consentimento, **7 limitações** e **6 evoluções** possíveis
+  - [x] Links internos e âncoras validados; nenhuma credencial exposta
+- **Definição de Pronto:** ✅ README cobre todos os itens do roteiro 5.2. Placeholder do link do vídeo a ser preenchido na atividade 9.1.
 
 ### 8.2 — Merge final em `develop` → `main`
 
