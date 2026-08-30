@@ -253,15 +253,16 @@ Board: https://github.com/users/lpradopires/projects/10/views/1
 
 ### 8.2 — Merge final em `develop` → `main`
 
-- [ ] Status: pendente
+- [~] Status: quase concluído — **falta apenas adicionar o professor** (aguardando o username)
 - **Requisitos:** R37
 - **Ações:**
-  - Revisar todas as `feature/*` mescladas em `develop`
-  - Confirmar Kanban atualizado (cards movidos para "Concluído")
-  - **Adicionar o professor como colaborador do repositório** (movido da Fase 0.1 por decisão do usuário — feito só no final)
-  - Merge final `develop` → `main`
-  - Confirmar que nenhum segredo foi versionado em nenhum ponto do histórico
-- **Definição de Pronto:** `main` contém a versão final e funcional; Kanban refletindo o estado real; professor com acesso de colaborador.
+  - [x] Revisadas todas as branches mescladas em `develop` — **8 PRs**, todos com CI verde: #1 paralelização · #2 governança · #3 observabilidade · #4 QA inteligente · #5 DevOps · #6 low-code · #7 prompts · #8 README
+  - [x] Kanban atualizado (26 cards: 10 históricos + 16 de atividade, refletindo o desenvolvimento real)
+  - [x] **Merge final `develop` → `main`** via PR [#9](https://github.com/lpradopires/agent_viagens/pull/9) — commit `57de59e`; branches `main` e `develop` sincronizadas
+  - [x] Verificação de segredos: varredura por padrão de token em **todo o histórico** (`git log --all -p`) → **0 ocorrências**; apenas `.env.example` versionado
+  - [x] Suíte verificada na própria `main`: **85/85 testes**, lint e build limpos
+  - [ ] **Adicionar o professor como colaborador** — pendente do username do GitHub. Comando pronto: `gh repo add-collaborator lpradopires/agent_viagens <username>`
+- **Definição de Pronto:** `main` contém a versão final e funcional ✅; Kanban refletindo o estado real ✅; professor com acesso de colaborador ⏳.
 
 ---
 
